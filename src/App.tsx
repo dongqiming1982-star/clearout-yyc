@@ -1118,9 +1118,24 @@ function matchingProviders(lead: Lead) {
 
 export default function App() {
   const [route, setRoute] = useState<Route>(getRoute())
-  const [lang, setLang] = useState<Lang>(() => (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en')
+  const [lang, setLang] = useState<Lang>(() => {
+    try {
+      const saved = window.localStorage.getItem('clearout_lang')
+      return saved === 'zh' || saved === 'en' ? saved : 'en'
+    } catch {
+      return 'en'
+    }
+  })
   const [menu, setMenu] = useState(false)
   const auroraHost = isAuroraOperatorHost()
+  const setPreferredLang = (next: Lang) => {
+    try {
+      window.localStorage.setItem('clearout_lang', next)
+    } catch {
+      // Keep the site usable even if localStorage is unavailable.
+    }
+    setLang(next)
+  }
   useEffect(() => { const fn = () => setRoute(getRoute()); window.addEventListener('popstate', fn); return () => window.removeEventListener('popstate', fn) }, [])
   useEffect(() => {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
@@ -1135,9 +1150,9 @@ export default function App() {
     }
     applySeo(route, lang)
   }, [lang, route, auroraHost])
-  if (auroraHost || route.type === 'aurora') return <AuroraOperatorSite lang={lang} setLang={setLang} />
+  if (auroraHost || route.type === 'aurora') return <AuroraOperatorSite lang={lang} setLang={setPreferredLang} />
   return <div className="min-h-screen bg-[#faf7ef] text-slate-950">
-    <Header lang={lang} setLang={setLang} menu={menu} setMenu={setMenu} route={route} />
+    <Header lang={lang} setLang={setPreferredLang} menu={menu} setMenu={setMenu} route={route} />
     {route.type === 'home' && <HomePage lang={lang} />}
     {route.type === 'request' && <RequestPage lang={lang} />}
     {route.type === 'providerJoin' && <ProviderPage lang={lang} />}
