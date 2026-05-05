@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://clearout.aurorasitesolutions.com/sitemap.xml
+Sitemap: https://www.aurorasitesolutions.com/aurora-sitemap.xml
