@@ -26,6 +26,7 @@ type Route =
   | { type: 'request' }
   | { type: 'providerJoin' }
   | { type: 'providerLeads' }
+  | { type: 'providerLead' }
   | { type: 'admin' }
   | { type: 'faq' }
   | { type: 'areas' }
@@ -853,6 +854,7 @@ function getRoute(): Route {
   const p = window.location.pathname
   if (p === '/request') return { type: 'request' }
   if (p === '/providers' || p === '/providers/join') return { type: 'providerJoin' }
+  if (p === '/provider/lead') return { type: 'providerLead' }
   if (p === '/provider/leads' || p === '/providers/leads') return { type: 'providerLeads' }
   if (p === '/admin') return { type: 'admin' }
   if (p === '/faq') return { type: 'faq' }
@@ -1133,6 +1135,7 @@ export default function App() {
     {route.type === 'request' && <RequestPage lang={lang} />}
     {route.type === 'providerJoin' && <ProviderPage lang={lang} />}
     {route.type === 'providerLeads' && <ProviderLeadsPage lang={lang} />}
+    {route.type === 'providerLead' && <ProviderLeadClaimPage lang={lang} />}
     {route.type === 'admin' && <AdminPage lang={lang} />}
     {route.type === 'faq' && <FAQPage lang={lang} />}
     {route.type === 'areas' && <AreasPage lang={lang} />}
@@ -1171,7 +1174,6 @@ function Header({ lang, setLang, menu, setMenu, route }: { lang: Lang; setLang: 
     </div></div>}
   </header>
 }
-
 
 function HomePage({ lang }: { lang: Lang }) {
   const L = copy[lang]
@@ -1713,6 +1715,159 @@ function ProviderForm({ lang }: { lang: Lang }) {
     <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意接收 Clearout YYC 的清运线索短信/邮件通知，可随时退订。' : 'I agree to receive Clearout YYC lead alerts by SMS/email and can opt out anytime.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={legal} onChange={e => setLegal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认本人/本业务有权在 Alberta 提供有偿清运服务，并自行负责保险、车辆、税务和处置规则。' : 'I confirm I am allowed to provide paid junk removal services in Alberta and am responsible for insurance, vehicle, tax, and disposal rules.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={dumping} onChange={e => setDumping(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意不会非法倾倒、遗弃或不当处理客户物品。' : 'I agree not to illegally dump, abandon, or improperly dispose of customer items.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我理解 Clearout YYC 是线索分发平台，不是清运公司、雇主或服务担保方；Beta 结束后的任何付费规则会在查看联系方式前显示。' : 'I understand Clearout YYC is a lead distribution platform, not a junk removal company, employer, or service guarantor; any future paid access rules will be shown before contact access.'}</span></label></div>
     {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}<button onClick={submit} className="mt-6 rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (lang === 'zh' ? '加入免费 Beta 名单' : 'Join Free Beta List')}</button></div>
     <div className="space-y-5"><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '服务商规则' : 'Provider rules'}</h3><div className="mt-5 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? '先确认电话：客户需求在分享前会先确认手机号。' : 'Phone confirmation: customer phone is confirmed before dispatch.'}</p><p>✔ {lang === 'zh' ? 'Beta 免费：测试阶段免费接收客户电话。' : 'Free beta: receive customer contact free during testing.'}</p><p>✔ {lang === 'zh' ? '无 App、无月费、无登录后台。' : 'No app, no monthly fee, no dashboard login.'}</p><p>✔ {lang === 'zh' ? '未来如启用付费，查看联系方式前会清楚显示规则。' : 'If paid access is enabled later, terms are shown before contact release.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来付费原则' : 'Future paid access principles'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700"><p><b>{lang === 'zh' ? 'Beta 期间免费：' : 'Free during beta:'}</b> {lang === 'zh' ? '当前阶段先验证客户需求和服务商响应。' : 'This stage is for testing customer demand and provider response.'}</p><p><b>{lang === 'zh' ? '以后按需付费：' : 'Pay only if you choose:'}</b> {lang === 'zh' ? '如果未来开启付费，只有当你选择查看客户联系方式时才可能付费，无月费、无隐藏订阅。' : 'If paid access is enabled later, you may pay only when you choose to view a customer contact. No monthly fee or hidden subscription.'}</p><p><b>{lang === 'zh' ? '查看前明示：' : 'Shown before access:'}</b> {lang === 'zh' ? '共享/独家、已售人数、价格和退款/credit 规则会在查看联系方式前显示。' : 'Shared/exclusive status, sold count, price, and refund/credit rules will be shown before contact access.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来审核资料' : 'Future verification'}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '正式收费或 Verified 标识上线前，可补充商业保险、BN、Business ID、WCB 等文件。字段已在数据模型中保留。' : 'Before paid mode or verified badge, providers can add insurance, BN, Business ID, WCB, and other documents. Fields are already reserved in the data model.'}</p></div></div></div>
+}
+
+type ProviderLeadPreviewResult = {
+  ok?: boolean
+  lead?: {
+    public_id: string
+    status: string
+    community_slug?: string
+    community_or_postal?: string
+    area?: string
+    service_type?: string
+    job_size?: string
+    timeline?: string
+    notes_preview?: string
+    shared_claim_count?: number
+    shared_limit?: number
+    expires_at?: string
+    created_at?: string
+    already_claimed_by_you?: boolean
+    exclusive_available?: boolean
+    shared_available?: boolean
+  }
+  message?: string
+}
+
+type ProviderClaimResult = {
+  ok?: boolean
+  access?: 'shared' | 'exclusive'
+  message?: string
+  lead_public_id?: string
+  shared_claim_count?: number
+  shared_limit?: number
+  customer?: {
+    name?: string
+    phone?: string
+    email?: string
+    community_or_postal?: string
+    area?: string
+    notes?: string
+  }
+}
+
+function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
+  const params = new URLSearchParams(window.location.search)
+  const lead = params.get('lead') || ''
+  const token = params.get('token') || ''
+  const [preview, setPreview] = useState<ProviderLeadPreviewResult | null>(null)
+  const [claim, setClaim] = useState<ProviderClaimResult | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [claiming, setClaiming] = useState<'shared' | 'exclusive' | ''>('')
+  const [error, setError] = useState('')
+
+  async function loadPreview() {
+    setError('')
+    setClaim(null)
+    if (!lead || !token) {
+      setError(lang === 'zh' ? '缺少 lead 或 token。' : 'Missing lead or token.')
+      setLoading(false)
+      return
+    }
+    try {
+      setLoading(true)
+      const response = await fetch(`${API_BASE_URL}/api/provider/lead-preview?lead=${encodeURIComponent(lead)}&token=${encodeURIComponent(token)}`)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || data?.result?.message || 'Could not load lead')
+      setPreview(data.result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function claimLead(access: 'shared' | 'exclusive') {
+    setError('')
+    setClaim(null)
+    if (!lead || !token) return
+    try {
+      setClaiming(access)
+      const response = await fetch(`${API_BASE_URL}/api/provider/claim-lead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_public_id: lead, token, access }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || data?.result?.message || 'Claim failed')
+      setClaim(data.result)
+      await loadPreview()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setClaiming('')
+    }
+  }
+
+  useEffect(() => { loadPreview() }, [])
+
+  const leadData = preview?.lead
+  const spotsLeft = Math.max(0, Number(leadData?.shared_limit || 3) - Number(leadData?.shared_claim_count || 0))
+
+  return <main>
+    <PageHero
+      eyebrow={lang === 'zh' ? '服务商抢单链接' : 'Provider claim link'}
+      title={lang === 'zh' ? 'Clearout YYC Beta 认领' : 'Clearout YYC Beta Claim'}
+      text={lang === 'zh' ? '先看需求概要。认领成功后才显示客户联系方式。Beta 阶段免费。' : 'Review the lead summary first. Customer contact details are shown only after a successful claim. Beta access is free.'}
+    />
+    <section className="mx-auto max-w-4xl px-5 py-12 sm:px-8 lg:px-10">
+      {loading && <div className="rounded-[2rem] bg-white p-7 text-sm text-slate-600 shadow-sm ring-1 ring-black/5">{lang === 'zh' ? '正在加载需求…' : 'Loading lead…'}</div>}
+      {error && <div className="rounded-[2rem] bg-red-50 p-7 text-sm font-semibold text-red-900 shadow-sm ring-1 ring-red-200">{error}</div>}
+
+      {!loading && leadData && <div className="rounded-[2rem] bg-white p-7 shadow-sm ring-1 ring-black/5">
+        <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.12em]">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{leadData.community_or_postal || 'Calgary'}</span>
+          <span className="rounded-full bg-red-50 px-3 py-1 text-red-800">{leadData.status}</span>
+          <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800">{spotsLeft} {lang === 'zh' ? '个 shared 名额' : 'shared spots left'}</span>
+        </div>
+        <h2 className="mt-5 text-3xl font-semibold tracking-tight">{leadData.service_type || 'Junk removal'} · {leadData.job_size || 'not sure'}</h2>
+        <div className="mt-5 grid gap-3 text-sm leading-6 text-slate-700 sm:grid-cols-2">
+          <p><b>{lang === 'zh' ? '区域' : 'Area'}:</b> {leadData.area || 'Calgary'}</p>
+          <p><b>{lang === 'zh' ? '时间' : 'Timing'}:</b> {leadData.timeline || 'not specified'}</p>
+          <p><b>{lang === 'zh' ? 'Shared' : 'Shared'}:</b> {leadData.shared_claim_count || 0} / {leadData.shared_limit || 3}</p>
+          <p><b>{lang === 'zh' ? '过期' : 'Expires'}:</b> {leadData.expires_at ? new Date(leadData.expires_at).toLocaleString() : '—'}</p>
+        </div>
+        <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700">
+          <b>{lang === 'zh' ? '客户备注预览' : 'Customer notes preview'}</b>
+          <p className="mt-2">{leadData.notes_preview || (lang === 'zh' ? '无备注。' : 'No notes provided.')}</p>
+        </div>
+        <p className="mt-5 text-sm leading-6 text-slate-500">{lang === 'zh' ? '认领前不显示客户电话、邮箱或完整联系方式。认领成功后，你直接联系客户报价和安排服务。Clearout YYC 不提供电话派单。' : 'Customer phone, email, and full contact details are hidden until claim. After claiming, contact the customer directly to quote and arrange service. Clearout YYC does not provide phone dispatch.'}</p>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-2">
+          <button disabled={!leadData.shared_available || Boolean(claiming)} onClick={() => claimLead('shared')} className="rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
+            {claiming === 'shared' ? (lang === 'zh' ? '认领中…' : 'Claiming…') : (lang === 'zh' ? '免费 Shared 认领' : 'Claim Shared Free')}
+          </button>
+          <button disabled={!leadData.exclusive_available || Boolean(claiming)} onClick={() => claimLead('exclusive')} className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
+            {claiming === 'exclusive' ? (lang === 'zh' ? '认领中…' : 'Claiming…') : (lang === 'zh' ? '免费 Exclusive 认领' : 'Claim Exclusive Free')}
+          </button>
+        </div>
+      </div>}
+
+      {claim?.ok && <div className="mt-6 rounded-[2rem] bg-emerald-50 p-7 shadow-sm ring-1 ring-emerald-200">
+        <CheckCircle2 className="text-emerald-700" size={36}/>
+        <h2 className="mt-3 text-2xl font-semibold text-emerald-950">{lang === 'zh' ? '认领成功，客户联系方式已显示' : 'Claim successful — customer contact details released'}</h2>
+        <div className="mt-5 grid gap-3 text-sm leading-6 text-emerald-950 sm:grid-cols-2">
+          <p><b>{lang === 'zh' ? '认领类型' : 'Access'}:</b> {claim.access}</p>
+          <p><b>{lang === 'zh' ? '位置' : 'Area'}:</b> {claim.customer?.community_or_postal || '—'}</p>
+          <p><b>{lang === 'zh' ? '客户' : 'Customer'}:</b> {claim.customer?.name || '—'}</p>
+          <p><b>{lang === 'zh' ? '电话' : 'Phone'}:</b> {claim.customer?.phone || '—'}</p>
+          <p><b>Email:</b> {claim.customer?.email || '—'}</p>
+        </div>
+        <p className="mt-4 text-sm leading-6 text-emerald-900">{claim.customer?.notes || ''}</p>
+      </div>}
+    </section>
+  </main>
 }
 
 
