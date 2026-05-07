@@ -1808,7 +1808,6 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data?.error || data?.result?.message || 'Claim failed')
       setClaim(data.result)
-      await loadPreview()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -1934,8 +1933,8 @@ function ProviderLeadsPage({ lang }: { lang: Lang }) {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data?.error || data?.result?.message || 'Claim failed')
-      setClaimed(data.result)
       await loadLeads(token)
+      setClaimed(data.result)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
