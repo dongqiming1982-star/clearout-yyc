@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clearout YYC Admin</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; background: #f8fafc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; background: rgba(255,255,255,.92); backdrop-filter: blur(16px); }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 22px; }
+    h1 { margin: 0; font-size: 24px; }
+    .sub { color: #64748b; font-size: 14px; margin-top: 6px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 22px; padding: 18px; box-shadow: 0 12px 30px rgba(15, 23, 42, .05); }
+    .grid { display: grid; gap: 14px; }
+    .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .stat b { display: block; font-size: 26px; }
+    .stat span { color: #64748b; font-size: 13px; }
+    .login { display: grid; gap: 10px; max-width: 520px; }
+    input { width: 100%; border: 1px solid #cbd5e1; border-radius: 16px; padding: 12px 14px; font: inherit; }
+    button { border: 0; border-radius: 999px; padding: 10px 14px; font-weight: 700; cursor: pointer; background: #991b1b; color: white; }
+    button.secondary { background: #f1f5f9; color: #0f172a; }
+    button.warning { background: #92400e; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+    .tabs button { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; }
+    .tabs button.active { background: #991b1b; color: #fff; border-color: #991b1b; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 10px; text-align: left; vertical-align: top; }
+    th { color: #64748b; font-size: 12px; background: #f8fafc; }
+    .pill { display: inline-flex; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; background: #f1f5f9; }
+    .ok { background: #dcfce7; color: #166534; }
+    .bad { background: #fee2e2; color: #991b1b; }
+    .mid { background: #fef3c7; color: #92400e; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .error { color: #991b1b; font-weight: 700; }
+    .muted { color: #64748b; }
+    .scroll { overflow-x: auto; }
+    @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Clearout YYC Admin</h1>
+    <div class="sub">Internal provider, lead, and claim management. Do not share your admin token.</div>
+  </div>
+</header>
+
+<main class="wrap grid">
+  <section class="card login" id="loginBox">
+    <b>Admin token</b>
+    <input id="tokenInput" type="password" placeholder="Enter ADMIN_TOKEN" />
+    <div class="actions">
+      <button onclick="saveToken()">Enter Admin</button>
+      <button class="secondary" onclick="clearToken()">Clear</button>
+    </div>
+    <div class="muted">Token is stored only in this browser's localStorage.</div>
+  </section>
+
+  <section id="app" style="display:none">
+    <div class="grid stats" id="stats"></div>
+
+    <div class="tabs">
+      <button id="tab-providers" onclick="showTab('providers')">Providers</button>
+      <button id="tab-leads" onclick="showTab('leads')">Leads</button>
+      <button id="tab-claims" onclick="showTab('claims')">Claims</button>
+      <button class="secondary" onclick="loadAll()">Refresh</button>
+    </div>
+
+    <div id="message"></div>
+
+    <section class="card" id="providersPanel"></section>
+    <section class="card" id="leadsPanel" style="display:none"></section>
+    <section class="card" id="claimsPanel" style="display:none"></section>
+  </section>
+</main>
+
+<script>
+let token = localStorage.getItem('clearout_admin_token') || ''
+let currentTab = 'providers'
+
+document.getElementById('tokenInput').value = token
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function badge(text, cls='') {
+  return `<span class="pill ${cls}">${esc(text)}</span>`
+}
+
+function setMessage(msg, error=false) {
+  document.getElementById('message').innerHTML = msg ? `<p class="${error ? 'error' : 'muted'}">${esc(msg)}</p>` : ''
+}
+
+async function api(path, options={}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      'content-type': 'application/json',
+      'x-admin-token': token,
+      ...(options.headers || {}),
+    },
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`)
+  return data
+}
+
+function saveToken() {
+  token = document.getElementById('tokenInput').value.trim()
+  localStorage.setItem('clearout_admin_token', token)
+  loadAll()
+}
+
+function clearToken() {
+  localStorage.removeItem('clearout_admin_token')
+  token = ''
+  document.getElementById('tokenInput').value = ''
+  document.getElementById('app').style.display = 'none'
+  document.getElementById('loginBox').style.display = 'grid'
+}
+
+function showTab(tab) {
+  currentTab = tab
+  for (const id of ['providers','leads','claims']) {
+    document.getElementById(`tab-${id}`).classList.toggle('active', id === tab)
+    document.getElementById(`${id}Panel`).style.display = id === tab ? 'block' : 'none'
+  }
+}
+
+async function loadAll() {
+  try {
+    if (!token) throw new Error('Enter admin token first.')
+    setMessage('Loading...')
+    document.getElementById('loginBox').style.display = 'none'
+    document.getElementById('app').style.display = 'block'
+    await Promise.all([loadSummary(), loadProviders(), loadLeads(), loadClaims()])
+    showTab(currentTab)
+    setMessage('')
+  } catch (e) {
+    setMessage(e.message, true)
+    document.getElementById('loginBox').style.display = 'grid'
+    document.getElementById('app').style.display = 'none'
+  }
+}
+
+async function loadSummary() {
+  const { summary } = await api('/api/admin/summary')
+  document.getElementById('stats').innerHTML = `
+    <div class="card stat"><b>${summary.providers_total}</b><span>Providers total</span></div>
+    <div class="card stat"><b>${summary.providers_pending}</b><span>Providers pending</span></div>
+    <div class="card stat"><b>${summary.leads_total}</b><span>Leads total</span></div>
+    <div class="card stat"><b>${summary.claims_total}</b><span>Claims total</span></div>
+  `
+}
+
+async function providerAction(provider_id, action) {
+  await api('/api/admin/provider-action', { method: 'POST', body: JSON.stringify({ provider_id, action }) })
+  await loadAll()
+}
+
+async function loadProviders() {
+  const { providers } = await api('/api/admin/providers')
+  document.getElementById('providersPanel').innerHTML = `
+    <h2>Providers</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>
+      ${providers.map(p => `
+        <tr>
+          <td><b>${esc(p.business_name)}</b><br><span class="muted">${esc(p.public_id)}</span></td>
+          <td>${esc(p.contact_name)}</td>
+          <td>${esc(p.email)}</td>
+          <td>${esc(p.phone)}</td>
+          <td>
+            ${p.approved ? badge('approved','ok') : badge('pending','mid')}
+            ${p.active ? badge('active','ok') : badge('inactive','bad')}
+          </td>
+          <td>${esc(new Date(p.created_at).toLocaleString())}</td>
+          <td class="actions">
+            <button onclick="providerAction('${p.id}','approve')">Approve</button>
+            <button class="secondary" onclick="providerAction('${p.id}','activate')">Activate</button>
+            <button class="warning" onclick="providerAction('${p.id}','suspend')">Suspend</button>
+          </td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table></div>
+  `
+}
+
+async function leadAction(lead_id, action) {
+  await api('/api/admin/lead-action', { method: 'POST', body: JSON.stringify({ lead_id, action }) })
+  await loadAll()
+}
+
+async function loadLeads() {
+  const { leads } = await api('/api/admin/leads')
+  document.getElementById('leadsPanel').innerHTML = `
+    <h2>Leads</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Lead</th><th>Customer</th><th>Contact</th><th>Job</th><th>Status</th><th>Shared</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>
+      ${leads.map(l => `
+        <tr>
+          <td><b>${esc(l.public_id)}</b><br><span class="muted">${esc(l.community_or_postal || l.area || '')}</span></td>
+          <td>${esc(l.customer_name)}</td>
+          <td>${esc(l.customer_phone)}<br>${esc(l.customer_email || '')}</td>
+          <td>${esc(l.service_type)}<br><span class="muted">${esc(l.job_size)} · ${esc(l.timeline)}</span></td>
+          <td>${badge(l.status, l.status === 'published' ? 'ok' : l.status === 'queued' ? 'mid' : 'bad')}</td>
+          <td>${esc(l.shared_claim_count)} / ${esc(l.shared_limit)}</td>
+          <td>${esc(new Date(l.created_at).toLocaleString())}</td>
+          <td class="actions">
+            <button onclick="leadAction('${l.id}','publish')">Publish</button>
+            <button class="secondary" onclick="leadAction('${l.id}','queue')">Queue</button>
+            <button class="warning" onclick="leadAction('${l.id}','expire')">Expire</button>
+          </td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table></div>
+  `
+}
+
+async function loadClaims() {
+  const { claims } = await api('/api/admin/claims')
+  document.getElementById('claimsPanel').innerHTML = `
+    <h2>Claims</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Time</th><th>Access</th><th>Status</th><th>Provider</th><th>Lead</th><th>Customer</th></tr></thead>
+      <tbody>
+      ${claims.map(c => `
+        <tr>
+          <td>${esc(new Date(c.created_at).toLocaleString())}</td>
+          <td>${badge(c.access, c.access === 'exclusive' ? 'mid' : 'ok')}</td>
+          <td>${esc(c.status)}</td>
+          <td><b>${esc(c.provider?.business_name || '')}</b><br>${esc(c.provider?.email || '')}<br>${esc(c.provider?.phone || '')}</td>
+          <td>${esc(c.lead?.public_id || '')}<br>${esc(c.lead?.service_type || '')}<br>${esc(c.lead?.community_or_postal || '')}</td>
+          <td>${esc(c.lead?.customer_name || '')}<br>${esc(c.lead?.customer_phone || '')}<br>${esc(c.lead?.customer_email || '')}</td>
+        </tr>
+      `).join('')}
+      </tbody>
+    </table></div>
+  `
+}
+
+if (token) loadAll()
+else showTab('providers')
+</script>
+</body>
+</html>
