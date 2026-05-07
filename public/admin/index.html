@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clearout YYC Admin</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <title>清除out YYC 后台</title>
   <style>
     :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; background: #f8fafc; }
     * { box-sizing: border-box; }
@@ -43,30 +44,30 @@
 <body>
 <header>
   <div class="wrap">
-    <h1>Clearout YYC Admin</h1>
-    <div class="sub">Internal provider, lead, and claim management. Do not share your admin token.</div>
+    <h1>清除out YYC 后台</h1>
+    <div class="sub">内部管理后台：管理服务商、客户需求和认领记录。不要分享后台密码。</div>
   </div>
 </header>
 
 <main class="wrap grid">
   <section class="card login" id="loginBox">
-    <b>Admin token</b>
-    <input id="tokenInput" type="password" placeholder="Enter ADMIN_TOKEN" />
+    <b>后台密码</b>
+    <input id="tokenInput" type="password" placeholder="输入 ADMIN_TOKEN" />
     <div class="actions">
-      <button onclick="saveToken()">Enter Admin</button>
-      <button class="secondary" onclick="clearToken()">Clear</button>
+      <button onclick="saveToken()">进入后台</button>
+      <button class="secondary" onclick="clearToken()">清除</button>
     </div>
-    <div class="muted">Token is stored only in this browser's localStorage.</div>
+    <div class="muted">后台密码只保存在当前浏览器的 localStorage 中。</div>
   </section>
 
   <section id="app" style="display:none">
     <div class="grid stats" id="stats"></div>
 
     <div class="tabs">
-      <button id="tab-providers" onclick="showTab('providers')">Providers</button>
-      <button id="tab-leads" onclick="showTab('leads')">Leads</button>
-      <button id="tab-claims" onclick="showTab('claims')">Claims</button>
-      <button class="secondary" onclick="loadAll()">Refresh</button>
+      <button id="tab-providers" onclick="showTab('providers')">服务商</button>
+      <button id="tab-leads" onclick="showTab('leads')">客户需求</button>
+      <button id="tab-claims" onclick="showTab('claims')">认领记录</button>
+      <button class="secondary" onclick="loadAll()">刷新</button>
     </div>
 
     <div id="message"></div>
@@ -126,18 +127,18 @@ function clearToken() {
 function showTab(tab) {
   currentTab = tab
   for (const id of ['providers','leads','claims']) {
-    document.getElementById(`tab-${id}`).classList.toggle('active', id === tab)
+    document.getElementById(`tab-${id}`).classList.toggle('启用', id === tab)
     document.getElementById(`${id}Panel`).style.display = id === tab ? 'block' : 'none'
   }
 }
 
 async function loadAll() {
   try {
-    if (!token) throw new Error('Enter admin token first.')
-    setMessage('Loading...')
+    if (!token) throw new Error('请先输入后台密码。')
+    setMessage('加载中...')
     document.getElementById('loginBox').style.display = 'none'
     document.getElementById('app').style.display = 'block'
-    await Promise.all([loadSummary(), loadProviders(), loadLeads(), loadClaims()])
+    await Promise.all([loadSummary(), load服务商(), load客户需求(), load认领记录()])
     showTab(currentTab)
     setMessage('')
   } catch (e) {
@@ -150,10 +151,10 @@ async function loadAll() {
 async function loadSummary() {
   const { summary } = await api('/api/admin?resource=summary')
   document.getElementById('stats').innerHTML = `
-    <div class="card stat"><b>${summary.providers_total}</b><span>Providers total</span></div>
-    <div class="card stat"><b>${summary.providers_pending}</b><span>Providers pending</span></div>
-    <div class="card stat"><b>${summary.leads_total}</b><span>Leads total</span></div>
-    <div class="card stat"><b>${summary.claims_total}</b><span>Claims total</span></div>
+    <div class="card stat"><b>${summary.providers_total}</b><span>服务商 total</span></div>
+    <div class="card stat"><b>${summary.providers_pending}</b><span>服务商 pending</span></div>
+    <div class="card stat"><b>${summary.leads_total}</b><span>客户需求 total</span></div>
+    <div class="card stat"><b>${summary.claims_total}</b><span>认领记录 total</span></div>
   `
 }
 
@@ -162,12 +163,12 @@ async function providerAction(provider_id, action) {
   await loadAll()
 }
 
-async function loadProviders() {
+async function load服务商() {
   const { providers } = await api('/api/admin?resource=providers')
   document.getElementById('providersPanel').innerHTML = `
-    <h2>Providers</h2>
+    <h2>服务商</h2>
     <div class="scroll"><table>
-      <thead><tr><th>Business</th><th>Contact</th><th>Email</th><th>Phone</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+      <thead><tr><th>商家名称</th><th>联系人</th><th>邮箱</th><th>电话</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
       <tbody>
       ${providers.map(p => `
         <tr>
@@ -176,14 +177,14 @@ async function loadProviders() {
           <td>${esc(p.email)}</td>
           <td>${esc(p.phone)}</td>
           <td>
-            ${p.approved ? badge('approved','ok') : badge('pending','mid')}
-            ${p.active ? badge('active','ok') : badge('inactive','bad')}
+            ${p.approved ? badge('已批准','ok') : badge('待审核','mid')}
+            ${p.active ? badge('启用','ok') : badge('停用','bad')}
           </td>
           <td>${esc(new Date(p.created_at).toLocaleString())}</td>
           <td class="actions">
-            <button onclick="providerAction('${p.id}','approve')">Approve</button>
-            <button class="secondary" onclick="providerAction('${p.id}','activate')">Activate</button>
-            <button class="warning" onclick="providerAction('${p.id}','suspend')">Suspend</button>
+            <button onclick="providerAction('${p.id}','approve')">批准</button>
+            <button class="secondary" onclick="providerAction('${p.id}','activate')">启用</button>
+            <button class="warning" onclick="providerAction('${p.id}','suspend')">暂停</button>
           </td>
         </tr>
       `).join('')}
@@ -197,12 +198,12 @@ async function leadAction(lead_id, action) {
   await loadAll()
 }
 
-async function loadLeads() {
+async function load客户需求() {
   const { leads } = await api('/api/admin?resource=leads')
   document.getElementById('leadsPanel').innerHTML = `
-    <h2>Leads</h2>
+    <h2>客户需求</h2>
     <div class="scroll"><table>
-      <thead><tr><th>Lead</th><th>Customer</th><th>Contact</th><th>Job</th><th>Status</th><th>Shared</th><th>Created</th><th>Actions</th></tr></thead>
+      <thead><tr><th>需求</th><th>客户</th><th>联系人</th><th>任务</th><th>状态</th><th>共享名额</th><th>创建时间</th><th>操作</th></tr></thead>
       <tbody>
       ${leads.map(l => `
         <tr>
@@ -210,13 +211,13 @@ async function loadLeads() {
           <td>${esc(l.customer_name)}</td>
           <td>${esc(l.customer_phone)}<br>${esc(l.customer_email || '')}</td>
           <td>${esc(l.service_type)}<br><span class="muted">${esc(l.job_size)} · ${esc(l.timeline)}</span></td>
-          <td>${badge(l.status, l.status === 'published' ? 'ok' : l.status === 'queued' ? 'mid' : 'bad')}</td>
+          <td>${badge(({published:'已发布',queued:'排队中',shared_active:'共享中',shared_full:'共享已满',exclusive_claimed:'独家已认领',expired:'已过期',rejected:'已拒绝'}[l.status] || l.status), l.status === 'published' || l.status === 'shared_active' ? 'ok' : l.status === 'queued' ? 'mid' : 'bad')}</td>
           <td>${esc(l.shared_claim_count)} / ${esc(l.shared_limit)}</td>
           <td>${esc(new Date(l.created_at).toLocaleString())}</td>
           <td class="actions">
-            <button onclick="leadAction('${l.id}','publish')">Publish</button>
-            <button class="secondary" onclick="leadAction('${l.id}','queue')">Queue</button>
-            <button class="warning" onclick="leadAction('${l.id}','expire')">Expire</button>
+            <button onclick="leadAction('${l.id}','publish')">发布</button>
+            <button class="secondary" onclick="leadAction('${l.id}','queue')">排队</button>
+            <button class="warning" onclick="leadAction('${l.id}','expire')">过期</button>
           </td>
         </tr>
       `).join('')}
@@ -225,17 +226,17 @@ async function loadLeads() {
   `
 }
 
-async function loadClaims() {
+async function load认领记录() {
   const { claims } = await api('/api/admin?resource=claims')
   document.getElementById('claimsPanel').innerHTML = `
-    <h2>Claims</h2>
+    <h2>认领记录</h2>
     <div class="scroll"><table>
-      <thead><tr><th>Time</th><th>Access</th><th>Status</th><th>Provider</th><th>Lead</th><th>Customer</th></tr></thead>
+      <thead><tr><th>时间</th><th>认领类型</th><th>状态</th><th>服务商</th><th>需求</th><th>客户</th></tr></thead>
       <tbody>
       ${claims.map(c => `
         <tr>
           <td>${esc(new Date(c.created_at).toLocaleString())}</td>
-          <td>${badge(c.access, c.access === 'exclusive' ? 'mid' : 'ok')}</td>
+          <td>${badge(c.access === 'exclusive' ? '独家' : '共享', c.access === 'exclusive' ? 'mid' : 'ok')}</td>
           <td>${esc(c.status)}</td>
           <td><b>${esc(c.provider?.business_name || '')}</b><br>${esc(c.provider?.email || '')}<br>${esc(c.provider?.phone || '')}</td>
           <td>${esc(c.lead?.public_id || '')}<br>${esc(c.lead?.service_type || '')}<br>${esc(c.lead?.community_or_postal || '')}</td>
