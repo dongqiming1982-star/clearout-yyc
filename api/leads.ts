@@ -1,3 +1,4 @@
+import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
@@ -35,8 +36,11 @@ function mapLeadToRpc(lead: any, sourceUrl: string) {
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { lead, turnstileToken, source_url } = req.body || {}
+    const { lead, turnstileToken, source_url, manualCaptcha } = req.body || {}
     if (!lead || typeof lead !== 'object') return res.status(400).json({ error: 'Missing lead payload' })
+
+    const captchaCheck = verifyManualCaptcha(manualCaptcha)
+    if (!captchaCheck.ok) return res.status(400).json({ error: captchaCheck.error })
 
     await verifyTurnstileIfConfigured(turnstileToken, req.headers?.['x-forwarded-for'])
 

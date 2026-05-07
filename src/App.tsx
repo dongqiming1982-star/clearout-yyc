@@ -881,6 +881,94 @@ async function postRemoteJson<T>(path: string, payload: unknown): Promise<T> {
   return data as T
 }
 
+type ManualCaptchaChallenge = {
+  question: string
+  nonce: string
+  expires: number
+  signature: string
+}
+
+type ManualCaptchaState = {
+  challenge: ManualCaptchaChallenge | null
+  answer: string
+  setAnswer: (v: string) => void
+  refresh: () => Promise<void>
+  loading: boolean
+}
+
+async function loadManualCaptchaChallenge(): Promise<ManualCaptchaChallenge> {
+  const response = await fetch(`${API_BASE_URL}/api/manual-captcha`, {
+    method: 'GET',
+    cache: 'no-store',
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(data?.error || 'Could not load verification code.')
+  return data as ManualCaptchaChallenge
+}
+
+function useManualCaptcha(): ManualCaptchaState {
+  const [challenge, setChallenge] = useState<ManualCaptchaChallenge | null>(null)
+  const [answer, setAnswer] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const refresh = async () => {
+    setLoading(true)
+    try {
+      const next = await loadManualCaptchaChallenge()
+      setChallenge(next)
+      setAnswer('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refresh().catch(() => {})
+  }, [])
+
+  return { challenge, answer, setAnswer, refresh, loading }
+}
+
+function manualCaptchaPayload(state: ManualCaptchaState) {
+  return {
+    answer: state.answer,
+    nonce: state.challenge?.nonce || '',
+    expires: state.challenge?.expires || 0,
+    signature: state.challenge?.signature || '',
+  }
+}
+
+function isManualCaptchaReady(state: ManualCaptchaState) {
+  return Boolean(state.challenge && state.answer.trim())
+}
+
+function ManualCaptchaBox({ lang, captcha }: { lang: Lang; captcha: ManualCaptchaState }) {
+  return <div className="mt-5 rounded-2xl bg-slate-50 p-4 ring-1 ring-black/5">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <b className="text-sm text-slate-950">{lang === 'zh' ? '人工验证码' : 'Manual verification'}</b>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{lang === 'zh' ? '提交前请输入下面算式的答案，防止恶意提交。' : 'Enter the answer before submitting to reduce spam.'}</p>
+      </div>
+      <button type="button" onClick={() => captcha.refresh()} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-black/10 hover:bg-red-50" disabled={captcha.loading}>
+        {captcha.loading ? (lang === 'zh' ? '刷新中…' : 'Refreshing…') : (lang === 'zh' ? '换一个' : 'Refresh')}
+      </button>
+    </div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-[140px_1fr]">
+      <div className="flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-lg font-bold text-slate-950 ring-1 ring-black/10">
+        {captcha.challenge?.question || '...'}
+      </div>
+      <input
+        inputMode="numeric"
+        value={captcha.answer}
+        onChange={e => captcha.setAnswer(e.target.value.replace(/\D/g, '').slice(0, 3))}
+        placeholder={lang === 'zh' ? '输入答案' : 'Enter answer'}
+        className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+      />
+    </div>
+  </div>
+}
+
+
 function getRoute(): Route {
   const p = window.location.pathname
   if (p === '/request') return { type: 'request' }
@@ -1553,6 +1641,7 @@ function RequestForm({ lang }: { lang: Lang }) {
   const [done, setDone] = useState<{ lead: Lead; dispatched: number } | null>(null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const manualCaptcha = useManualCaptcha()
 
   const classification = useMemo(() => classifyLead({ categories, amount, timing, location, regular, blocked }), [categories, amount, timing, location, regular, blocked])
   const photoHandler = (files: FileList | null) => setPhotos(Array.from(files || []).slice(0, 8).map(f => fileMeta(f)).filter(Boolean) as FileMeta[])
@@ -1575,6 +1664,7 @@ function RequestForm({ lang }: { lang: Lang }) {
     const normalizedCustomerEmail = normalizeOptionalEmail(contact.email)
     if (normalizedCustomerEmail === null) { setError(lang === 'zh' ? '请输入有效的邮箱地址，或留空。' : 'Please enter a valid email address, or leave this field blank.'); return }
     if (!consent || !real) { setError(lang === 'zh' ? '请确认真实需求和联系方式分享同意。' : 'Please confirm this is a real request and consent to contact sharing.'); return }
+    if (!isManualCaptchaReady(manualCaptcha)) { setError(lang === 'zh' ? '请输入人工验证码答案。' : 'Please enter the manual verification answer.'); return }
 
     const pricing = getLeadPricing(classification.grade, timing === 'today' || timing === 'tomorrow')
     const consentAt = new Date().toISOString()
@@ -1599,6 +1689,7 @@ function RequestForm({ lang }: { lang: Lang }) {
           lead,
           source: 'clearout_yyc_request_form',
           source_url: window.location.href,
+          manualCaptcha: manualCaptchaPayload(manualCaptcha),
         })
         saveList<Lead>('clearout_leads', lead)
         setDone({ lead, dispatched: Number(remote?.createdDispatches || 0) })
@@ -1652,7 +1743,9 @@ function RequestForm({ lang }: { lang: Lang }) {
       <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span><textarea value={contact.description} onChange={e => setContact({ ...contact, description: e.target.value })} placeholder={lang === 'zh' ? '例如：Beltline 公寓，有一张沙发和一个床垫，本周清走。' : 'Example: Beltline apartment, sofa and mattress, this week.'} className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label>
       <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{lang === 'zh' ? '上传照片（可选）' : 'Upload photos (optional)'}<input type="file" multiple accept="image/*" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>{photos.length > 0 && <p className="mt-2 text-xs text-slate-500">{photos.length} {lang === 'zh' ? '张照片已选择' : 'photo(s) selected'}</p>}
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
-      {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
+      <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
+      <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
+    {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
       <button onClick={submit} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-base font-semibold text-white hover:bg-red-800 sm:w-auto">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (lang === 'zh' ? '提交免费需求' : 'Submit Free Request')}<ArrowRight size={18}/></button>
     </div>
     <div className="space-y-5"><LeadGradeCard lang={lang} grade={classification.grade} fee={classification.fee} eligible={classification.eligible} risks={classification.riskFlags} /><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '提交前请了解' : 'Before you submit'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? 'Clearout YYC 是清运需求分发平台，不是清运公司。' : 'Clearout YYC is a junk removal request platform, not a junk removal company.'}</p><p>✔ {lang === 'zh' ? '你的需求最多发送给 3 个本地清运服务商。' : 'Your request may be shared with up to 3 local junk removal providers.'}</p><p>✔ {lang === 'zh' ? '你提交需求是免费的。' : 'Submitting a request is free.'}</p><p>✔ {lang === 'zh' ? '最终价格、时间、付款和服务由你和服务商直接确认。' : 'Final price, timing, payment, and service details are confirmed directly with the provider.'}</p></div></div></div>
@@ -1706,6 +1799,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const manualCaptcha = useManualCaptcha()
 
   async function submit() {
     setError('')
@@ -1719,6 +1813,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
     if (!normalizedProviderEmail) { setError(lang === 'zh' ? '请输入有效的服务商邮箱地址。' : 'Please enter a valid business email address.'); return }
     if (!areas.length || !services.length || !vehicles.length) { setError(lang === 'zh' ? '请选择服务区域、可接服务和车辆能力。' : 'Choose service areas, services, and vehicle capability.'); return }
     if (!smsConsent || !legal || !dumping || !terms) { setError(lang === 'zh' ? '请确认短信接收、合法经营、不非法倾倒和条款。' : 'Please confirm SMS opt-in, legal operation, no illegal dumping, and terms.'); return }
+    if (!isManualCaptchaReady(manualCaptcha)) { setError(lang === 'zh' ? '请输入人工验证码答案。' : 'Please enter the manual verification answer.'); return }
     const maxLevel = Math.max(...vehicles.map(v => vehicleOptions.find(x => x.id === v)?.level || 1))
     const row: ProviderApplication = {
       application_id: uid('provider'), created_at: new Date().toISOString(), approval_status: 'submitted', active: true, beta_opt_in: true, verified: false, last_assigned_at: null,
@@ -1736,6 +1831,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
           application: row,
           source: 'clearout_yyc_provider_beta_form',
           source_url: window.location.href,
+          manualCaptcha: manualCaptchaPayload(manualCaptcha),
         })
       }
       saveList<ProviderApplication>('clearout_providers', row)

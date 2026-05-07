@@ -1,3 +1,4 @@
+import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.js'
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseInsert } from './_lib/supabase.js'
@@ -9,8 +10,11 @@ function asArray(value: unknown): string[] {
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { application, turnstileToken, source_url } = req.body || {}
+    const { application, turnstileToken, source_url, manualCaptcha } = req.body || {}
     if (!application || typeof application !== 'object') return res.status(400).json({ error: 'Missing application payload' })
+
+    const captchaCheck = verifyManualCaptcha(manualCaptcha)
+    if (!captchaCheck.ok) return res.status(400).json({ error: captchaCheck.error })
 
     await verifyTurnstileIfConfigured(turnstileToken, req.headers?.['x-forwarded-for'])
 
