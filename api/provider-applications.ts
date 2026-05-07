@@ -1,7 +1,7 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.js'
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
-import { hasSupabaseConfig, supabaseInsert } from './_lib/supabase.js'
+import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'
 
 function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []
@@ -44,6 +44,19 @@ export default async function handler(req: any, res: any) {
     let supabase: any = { skipped: true }
 
     if (hasSupabaseConfig()) {
+      const providerEmail = String(application.email || '').trim().toLowerCase()
+      const providerPhone = String(application.phone || '').trim()
+
+      const existingProviders = await supabaseSelect<any>(
+        `providers?select=id,email,phone&or=(email.eq.${encodeURIComponent(providerEmail)},phone.eq.${encodeURIComponent(providerPhone)})&limit=1`
+      )
+
+      if (existingProviders.length > 0) {
+        return res.status(409).json({
+          error: 'This phone number or email is already registered. If this is your business, please contact Clearout YYC support.'
+        })
+      }
+
       const wantsEmail = application.accepts_email_leads !== false
       const wantsSms = application.accepts_sms_leads === true && application.sms_consent_confirmed === true
       const inserted = await supabaseInsert('providers', {
@@ -80,6 +93,17 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json({ ok: true, application_id: row.application_id, supabase, sheet, email, warning })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
+
+    if (
+      message.includes('duplicate key') ||
+      message.includes('providers_unique_email_lower') ||
+      message.includes('providers_unique_phone')
+    ) {
+      return res.status(409).json({
+        error: 'This phone number or email is already registered. If this is your business, please contact Clearout YYC support.'
+      })
+    }
+
     return res.status(500).json({ error: message })
   }
 }
