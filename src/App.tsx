@@ -1828,6 +1828,70 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
   const leadData = preview?.lead
   const spotsLeft = Math.max(0, Number(leadData?.shared_limit || 3) - Number(leadData?.shared_claim_count || 0))
 
+  const leadUnavailableNotice = (() => {
+    if (!leadData || claim?.ok) return null
+
+    const status = String(leadData.status || '')
+    const sharedCount = Number(leadData.shared_claim_count || 0)
+    const sharedLimit = Number(leadData.shared_limit || 3)
+
+    if (leadData.already_claimed_by_you) {
+      return {
+        title: lang === 'zh' ? '你已经认领过这个需求' : 'You have already claimed this lead',
+        body: lang === 'zh'
+          ? '客户联系方式显示在下方。你可以保存此链接，之后再次打开仍可查看。'
+          : 'Customer contact details are shown below. You can save this link and reopen it later.'
+      }
+    }
+
+    if (status === 'exclusive_claimed') {
+      return {
+        title: lang === 'zh' ? '这个需求已被独家认领' : 'This lead has already been claimed exclusively',
+        body: lang === 'zh'
+          ? '该需求已被其他服务商独家认领，当前不再开放认领。请查看下一个可用需求。'
+          : 'This lead has already been claimed exclusively by another provider. It is no longer available. Please check the next available lead.'
+      }
+    }
+
+    if (status === 'shared_full' || sharedCount >= sharedLimit) {
+      return {
+        title: lang === 'zh' ? '这个需求的共享名额已满' : 'The shared limit has been reached',
+        body: lang === 'zh'
+          ? '该需求已经达到最多共享服务商数量，当前不再开放认领。请查看下一个可用需求。'
+          : 'This lead has already been shared with the maximum number of providers. It is no longer available. Please check the next available lead.'
+      }
+    }
+
+    if (status === 'expired') {
+      return {
+        title: lang === 'zh' ? '这个需求已经过期' : 'This lead has expired',
+        body: lang === 'zh'
+          ? '该需求已过有效期，不能再认领。'
+          : 'This lead has expired and is no longer available.'
+      }
+    }
+
+    if (status === 'queued') {
+      return {
+        title: lang === 'zh' ? '这个需求暂未发布' : 'This lead is not available yet',
+        body: lang === 'zh'
+          ? '该需求还在等待发布。新需求会在服务商通知时间内开放。'
+          : 'This lead is waiting to be released. New leads are made available during provider alert hours.'
+      }
+    }
+
+    if (!leadData.shared_available && !leadData.exclusive_available) {
+      return {
+        title: lang === 'zh' ? '这个需求当前不可认领' : 'This lead is currently unavailable',
+        body: lang === 'zh'
+          ? '当前状态不允许认领。请查看下一个可用需求。'
+          : 'This lead is not available for claiming right now. Please check the next available lead.'
+      }
+    }
+
+    return null
+  })()
+
   return <main>
     <PageHero
       eyebrow={lang === 'zh' ? '服务商抢单链接' : 'Provider claim link'}
@@ -1856,6 +1920,11 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
           <p className="mt-2">{leadData.notes_preview || (lang === 'zh' ? '无备注。' : 'No notes provided.')}</p>
         </div>
         <p className="mt-5 text-sm leading-6 text-slate-500">{lang === 'zh' ? '认领前不显示客户电话、邮箱或完整联系方式。认领成功后，你直接联系客户报价和安排服务。Clearout YYC 不提供电话派单。' : 'Customer phone, email, and full contact details are hidden until claim. After claiming, contact the customer directly to quote and arrange service. Clearout YYC does not provide phone dispatch.'}</p>
+
+        {leadUnavailableNotice && <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950 ring-1 ring-amber-200">
+          <b>{leadUnavailableNotice.title}</b>
+          <p className="mt-1">{leadUnavailableNotice.body}</p>
+        </div>}
 
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
           <button disabled={!leadData.shared_available || Boolean(claiming)} onClick={() => claimLead('shared')} className="rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
@@ -1986,6 +2055,8 @@ function ProviderLeadsPage({ lang }: { lang: Lang }) {
               <h2 className="mt-3 text-2xl font-semibold">{lead.lead_grade || 'Lead'} · {lead.rough_amount}</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">{lead.dispatch_summary || `${lead.timing} · ${lead.item_location}`}</p>
               <p className="mt-3 text-xs text-slate-500">{lang === 'zh' ? '认领前不显示客户电话。认领后你直接联系客户报价和安排服务。' : 'Customer phone is hidden until claim. After claiming, contact the customer directly to quote and arrange service.'}</p>
+              {lead.provider_already_claimed && <p className="mt-3 rounded-2xl bg-emerald-50 p-3 text-xs font-semibold leading-5 text-emerald-900 ring-1 ring-emerald-200">{lang === 'zh' ? '你已经认领过这个需求。客户联系方式会在认领结果中显示。' : 'You have already claimed this lead. Customer contact details are available in your claim result.'}</p>}
+              {!lead.provider_already_claimed && lead.spots_left <= 0 && <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-semibold leading-5 text-amber-950 ring-1 ring-amber-200">{lang === 'zh' ? '这个需求已经达到最多共享服务商数量，不能再认领。' : 'This lead has already reached the maximum number of shared providers and is no longer available.'}</p>}
             </div>
             <button disabled={lead.provider_already_claimed || lead.spots_left <= 0} onClick={() => claimLead(lead.lead_public_id)} className="rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">{lead.provider_already_claimed ? (lang === 'zh' ? '已认领' : 'Already claimed') : (lang === 'zh' ? '免费认领' : 'Claim Free')}</button>
           </div>
