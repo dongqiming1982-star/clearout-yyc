@@ -1,9 +1,14 @@
 export function normalizeNorthAmericanPhone(input: unknown): string | null {
   const raw = String(input || '').trim()
-  const digits = raw.replace(/\D/g, '')
+  let digits = raw.replace(/\D/g, '')
 
-  // The +1 country code is fixed by the platform UI.
-  // Users must enter the 10-digit local number only.
+  // UI shows +1 as a fixed prefix. Users enter 10 local digits.
+  // But frontend may submit the normalized +1 number, so backend accepts both:
+  // 4035551234 and +14035551234.
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+
   if (digits.length !== 10) return null
 
   // NANP rule: area code and exchange cannot start with 0 or 1.

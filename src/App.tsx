@@ -834,16 +834,20 @@ function fileMeta(file?: File | null): FileMeta | null { return file ? { file_na
 
 function normalizeNorthAmericanPhone(input: string): string | null {
   const raw = String(input || '').trim()
-  const digits = raw.replace(/\D/g, '')
+  let digits = raw.replace(/\D/g, '')
 
-  // The +1 country code is fixed by the platform UI.
-  // Users must enter the 10-digit local number only.
+  // The visible +1 prefix is fixed. Users should type only the 10 local digits.
+  // If someone pastes +1, normalize it safely.
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+
   if (digits.length !== 10) return null
 
   // NANP rule: area code and exchange cannot start with 0 or 1.
   if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(digits)) return null
 
-  // Reject obvious fake numbers like 1111111111 or 5555555555.
+  // Reject obvious fake numbers.
   if (/^(\d)\1{9}$/.test(digits)) return null
 
   return `+1${digits}`
@@ -1659,7 +1663,7 @@ function RequestForm({ lang }: { lang: Lang }) {
     if (!contact.name.trim() || !contact.phone.trim() || !contact.community.trim()) { setError(lang === 'zh' ? '请填写姓名、电话和社区/邮编。' : 'Please enter name, phone, and community/postal code.'); return }
 
     const normalizedCustomerPhone = normalizeNorthAmericanPhone(contact.phone)
-    if (!normalizedCustomerPhone) { setError(lang === 'zh' ? '请输入有效的加拿大电话号码，例如 403-555-1234。' : 'Please enter a valid Canadian phone number, such as 403-555-1234.'); return }
+    if (!normalizedCustomerPhone) { setError(lang === 'zh' ? '请输入有效的 10 位电话号码，例如 403-555-1234。' : 'Please enter a valid 10-digit phone number, such as 403-555-1234.'); return }
 
     const normalizedCustomerEmail = normalizeOptionalEmail(contact.email)
     if (normalizedCustomerEmail === null) { setError(lang === 'zh' ? '请输入有效的邮箱地址，或留空。' : 'Please enter a valid email address, or leave this field blank.'); return }
@@ -1806,7 +1810,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
     if (!form.name.trim() || !form.contact.trim() || !form.phone.trim() || !form.email.trim()) { setError(lang === 'zh' ? '请填写名称、联系人、电话和邮箱。' : 'Please enter business name, contact name, phone, and email.'); return }
 
     const normalizedProviderPhone = normalizeNorthAmericanPhone(form.phone)
-    if (!normalizedProviderPhone) { setError(lang === 'zh' ? '请输入有效的服务商联系电话，例如 403-555-1234。' : 'Please enter a valid business contact phone number, such as 403-555-1234.'); return }
+    if (!normalizedProviderPhone) { setError(lang === 'zh' ? '请输入有效的 10 位服务商联系电话，例如 403-555-1234。' : 'Please enter a valid 10-digit business phone number, such as 403-555-1234.'); return }
 
     const normalizedProviderEmail = normalizeEmail(form.email)
     if (!normalizedProviderEmail) { setError(lang === 'zh' ? '请输入有效的服务商邮箱地址。' : 'Please enter a valid business email address.'); return }
