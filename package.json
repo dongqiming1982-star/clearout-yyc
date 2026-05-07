@@ -1,6 +1,6 @@
 {
-  "name": "clearout-yyc-v22-seo-launch-pack-clean",
-  "version": "2.2.0",
+  "name": "clearout-yyc-v23-supabase-claim-system",
+  "version": "2.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -25,5 +25,5 @@
     "typescript": "latest",
     "vite": "latest"
   },
-  "description": "Clearout YYC complete SEO launch pack with service pages, community pages, sitemap, and structured data"
+  "description": "Clearout YYC V23 Supabase lead intake and provider claim system"
 }
