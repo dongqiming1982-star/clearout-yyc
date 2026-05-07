@@ -1747,6 +1747,12 @@ type ProviderClaimResult = {
   lead_public_id?: string
   shared_claim_count?: number
   shared_limit?: number
+  customer_name?: string
+  customer_phone?: string
+  customer_email?: string
+  community_or_postal?: string
+  area?: string
+  request_description?: string
   customer?: {
     name?: string
     phone?: string
@@ -1859,12 +1865,12 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
         <h2 className="mt-3 text-2xl font-semibold text-emerald-950">{lang === 'zh' ? '认领成功，客户联系方式已显示' : 'Claim successful — customer contact details released'}</h2>
         <div className="mt-5 grid gap-3 text-sm leading-6 text-emerald-950 sm:grid-cols-2">
           <p><b>{lang === 'zh' ? '认领类型' : 'Access'}:</b> {claim.access}</p>
-          <p><b>{lang === 'zh' ? '位置' : 'Area'}:</b> {claim.customer?.community_or_postal || '—'}</p>
-          <p><b>{lang === 'zh' ? '客户' : 'Customer'}:</b> {claim.customer?.name || '—'}</p>
-          <p><b>{lang === 'zh' ? '电话' : 'Phone'}:</b> {claim.customer?.phone || '—'}</p>
-          <p><b>Email:</b> {claim.customer?.email || '—'}</p>
+          <p><b>{lang === 'zh' ? '位置' : 'Area'}:</b> {claim.customer?.community_or_postal || claim.community_or_postal || '—'}</p>
+          <p><b>{lang === 'zh' ? '客户' : 'Customer'}:</b> {claim.customer?.name || claim.customer_name || '—'}</p>
+          <p><b>{lang === 'zh' ? '电话' : 'Phone'}:</b> {claim.customer?.phone || claim.customer_phone || '—'}</p>
+          <p><b>Email:</b> {claim.customer?.email || claim.customer_email || '—'}</p>
         </div>
-        <p className="mt-4 text-sm leading-6 text-emerald-900">{claim.customer?.notes || ''}</p>
+        <p className="mt-4 text-sm leading-6 text-emerald-900">{claim.customer?.notes || claim.request_description || ''}</p>
       </div>}
     </section>
   </main>
