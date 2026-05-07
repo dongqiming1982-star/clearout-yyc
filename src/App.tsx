@@ -1787,6 +1787,14 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data?.error || data?.result?.message || 'Could not load lead')
       setPreview(data.result)
+      if (data?.result?.provider_already_claimed && data?.result?.customer) {
+        setClaim({
+          ok: true,
+          access: data.result.claimed_access || data.result.access || 'shared',
+          lead_public_id: lead,
+          customer: data.result.customer,
+        } as any)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
