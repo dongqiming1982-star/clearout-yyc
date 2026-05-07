@@ -1,4 +1,4 @@
-import { supabaseSelect } from '../_lib/supabase'
+import { supabaseSelect } from '../_lib/supabase.js'
 
 type ProviderRow = { id: string; provider_token: string; approved: boolean; active: boolean }
 type LeadRow = {

@@ -1,5 +1,5 @@
-import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch'
-import { hasSupabaseConfig, supabaseInsert } from './_lib/supabase'
+import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
+import { hasSupabaseConfig, supabaseInsert } from './_lib/supabase.js'
 
 function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []

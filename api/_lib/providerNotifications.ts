@@ -1,4 +1,4 @@
-import { supabasePatch, supabaseSelect } from './supabase'
+import { supabasePatch, supabaseSelect } from './supabase.js'
 
 type NotificationRow = {
   id: string

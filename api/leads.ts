@@ -1,6 +1,6 @@
-import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch'
-import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase'
-import { sendPendingProviderEmails } from './_lib/providerNotifications'
+import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
+import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
+import { sendPendingProviderEmails } from './_lib/providerNotifications.js'
 
 function firstText(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value || '')

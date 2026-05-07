@@ -1,5 +1,5 @@
-import { supabaseRpc, supabaseSelect } from '../_lib/supabase'
-import { sendPendingProviderEmails } from '../_lib/providerNotifications'
+import { supabaseRpc, supabaseSelect } from '../_lib/supabase.js'
+import { sendPendingProviderEmails } from '../_lib/providerNotifications.js'
 
 type LeadRow = { public_id: string }
 
