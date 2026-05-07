@@ -1,3 +1,4 @@
+import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.js'
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseInsert } from './_lib/supabase.js'
 
@@ -12,6 +13,28 @@ export default async function handler(req: any, res: any) {
     if (!application || typeof application !== 'object') return res.status(400).json({ error: 'Missing application payload' })
 
     await verifyTurnstileIfConfigured(turnstileToken, req.headers?.['x-forwarded-for'])
+
+    const businessName = String(application.provider_display_name || application.business_name || '').trim()
+    const contactName = String(application.contact_name || '').trim()
+
+    if (!businessName || !contactName) {
+      return res.status(400).json({ error: 'Please enter business name and contact name.' })
+    }
+
+    const normalizedProviderPhone = normalizeNorthAmericanPhone(application.phone)
+    if (!normalizedProviderPhone) {
+      return res.status(400).json({ error: 'Please enter a valid business contact phone number, such as 403-555-1234.' })
+    }
+
+    const normalizedProviderEmail = normalizeEmail(application.email)
+    if (!normalizedProviderEmail) {
+      return res.status(400).json({ error: 'Please enter a valid business email address.' })
+    }
+
+    application.provider_display_name = businessName
+    application.contact_name = contactName
+    application.phone = normalizedProviderPhone
+    application.email = normalizedProviderEmail
 
     const row = flatProviderApplication(application, String(source_url || req.headers?.referer || ''))
     let supabase: any = { skipped: true }

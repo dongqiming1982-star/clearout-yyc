@@ -832,6 +832,29 @@ function toggleValue(list: string[], value: string) { return list.includes(value
 function optionLabel(options: ReadonlyArray<{id: string; en: string; zh: string}>, id: string, lang: Lang) { return options.find(o => o.id === id)?.[lang] || id }
 function fileMeta(file?: File | null): FileMeta | null { return file ? { file_name: file.name, file_size: file.size, file_type: file.type || 'unknown', uploaded_at: new Date().toISOString(), review_status: 'uploaded' } : null }
 
+function normalizeNorthAmericanPhone(input: string): string | null {
+  let digits = String(input || '').replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1)
+  if (digits.length !== 10) return null
+  if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(digits)) return null
+  if (/^(\d)\1{9}$/.test(digits)) return null
+  return `+1${digits}`
+}
+
+function normalizeEmail(input: string): string | null {
+  const email = String(input || '').trim().toLowerCase()
+  if (!email) return null
+  if (email.length > 254) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return null
+  return email
+}
+
+function normalizeOptionalEmail(input: string): string | null {
+  const raw = String(input || '').trim()
+  if (!raw) return ''
+  return normalizeEmail(raw)
+}
+
 const USE_REMOTE_API = String(import.meta.env.VITE_USE_REMOTE_API || '').toLowerCase() === 'true'
 const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
 
@@ -1537,6 +1560,12 @@ function RequestForm({ lang }: { lang: Lang }) {
     if (submitting) return
     if (!categories.length) { setError(lang === 'zh' ? '请选择至少一个清运类别。' : 'Choose at least one category.'); return }
     if (!contact.name.trim() || !contact.phone.trim() || !contact.community.trim()) { setError(lang === 'zh' ? '请填写姓名、电话和社区/邮编。' : 'Please enter name, phone, and community/postal code.'); return }
+
+    const normalizedCustomerPhone = normalizeNorthAmericanPhone(contact.phone)
+    if (!normalizedCustomerPhone) { setError(lang === 'zh' ? '请输入有效的加拿大电话号码，例如 403-555-1234。' : 'Please enter a valid Canadian phone number, such as 403-555-1234.'); return }
+
+    const normalizedCustomerEmail = normalizeOptionalEmail(contact.email)
+    if (normalizedCustomerEmail === null) { setError(lang === 'zh' ? '请输入有效的邮箱地址，或留空。' : 'Please enter a valid email address, or leave this field blank.'); return }
     if (!consent || !real) { setError(lang === 'zh' ? '请确认真实需求和联系方式分享同意。' : 'Please confirm this is a real request and consent to contact sharing.'); return }
 
     const pricing = getLeadPricing(classification.grade, timing === 'today' || timing === 'tomorrow')
@@ -1544,7 +1573,7 @@ function RequestForm({ lang }: { lang: Lang }) {
     const leadBase: Omit<Lead, 'dispatch_summary'> = {
       lead_id: uid('lead'), customer_token: uid('customer').replace('customer_', ''), created_at: new Date().toISOString(), language: lang,
       status: classification.eligible ? 'submitted' : 'rejected_special_item',
-      customer_name: contact.name, customer_phone: contact.phone, customer_email: contact.email, community_slug: communitySlug === 'other' ? '' : communitySlug, community_or_postal: contact.community, area: contact.area,
+      customer_name: contact.name.trim(), customer_phone: normalizedCustomerPhone, customer_email: normalizedCustomerEmail || '', community_slug: communitySlug === 'other' ? '' : communitySlug, community_or_postal: contact.community, area: contact.area,
       consent_contact_share: consent, consent_real_request: real, customer_consent_at: consentAt, no_phone_spam_limit: 3, phone_verified: false, phone_verified_at: '', otp_sent_at: '', otp_attempts: 0, verification_method: 'manual_follow_up',
       request_categories: categories, rough_amount: amount, item_location: location, timing, request_description: contact.description, photos,
       regular_special_items: regular, blocked_or_hazardous_items: blocked, service_tags: categories, risk_flags: classification.riskFlags,
@@ -1673,13 +1702,19 @@ function ProviderForm({ lang }: { lang: Lang }) {
   async function submit() {
     setError('')
     if (submitting) return
-    if (!form.name.trim() || !form.phone.trim()) { setError(lang === 'zh' ? '请填写名称和电话。' : 'Please enter name and phone.'); return }
+    if (!form.name.trim() || !form.contact.trim() || !form.phone.trim() || !form.email.trim()) { setError(lang === 'zh' ? '请填写名称、联系人、电话和邮箱。' : 'Please enter business name, contact name, phone, and email.'); return }
+
+    const normalizedProviderPhone = normalizeNorthAmericanPhone(form.phone)
+    if (!normalizedProviderPhone) { setError(lang === 'zh' ? '请输入有效的服务商联系电话，例如 403-555-1234。' : 'Please enter a valid business contact phone number, such as 403-555-1234.'); return }
+
+    const normalizedProviderEmail = normalizeEmail(form.email)
+    if (!normalizedProviderEmail) { setError(lang === 'zh' ? '请输入有效的服务商邮箱地址。' : 'Please enter a valid business email address.'); return }
     if (!areas.length || !services.length || !vehicles.length) { setError(lang === 'zh' ? '请选择服务区域、可接服务和车辆能力。' : 'Choose service areas, services, and vehicle capability.'); return }
     if (!smsConsent || !legal || !dumping || !terms) { setError(lang === 'zh' ? '请确认短信接收、合法经营、不非法倾倒和条款。' : 'Please confirm SMS opt-in, legal operation, no illegal dumping, and terms.'); return }
     const maxLevel = Math.max(...vehicles.map(v => vehicleOptions.find(x => x.id === v)?.level || 1))
     const row: ProviderApplication = {
       application_id: uid('provider'), created_at: new Date().toISOString(), approval_status: 'submitted', active: true, beta_opt_in: true, verified: false, last_assigned_at: null,
-      provider_display_name: form.name, contact_name: form.contact, phone: form.phone, email: form.email, service_areas: areas, services_accepted: services, vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
+      provider_display_name: form.name.trim(), contact_name: form.contact.trim(), phone: normalizedProviderPhone, email: normalizedProviderEmail, service_areas: areas, services_accepted: services, vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
       accepts_sms_leads: form.preferred !== 'email', accepts_email_leads: form.preferred !== 'sms', sms_consent_confirmed: smsConsent, preferred_notification: form.preferred, daily_lead_limit: form.daily, available_days: days, available_time_windows: windows, accepts_same_day: form.sameDay, refund_or_bad_number_policy_seen: true,
       provider_type: 'not_sure', legal_owner_name: '', corporation_legal_name: '', registered_trade_name: '', business_number_bn: '', gst_hst_account: '', city_business_id: '', alberta_registration_proof: null,
       general_liability_status: 'not_sure', commercial_auto_status: 'not_sure', insurance_company: '', policy_number: '', insurance_expiry: '', general_liability_proof: null, commercial_auto_proof: null,

@@ -1,3 +1,4 @@
+import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
 import { sendPendingProviderEmails } from './_lib/providerNotifications.js'
@@ -38,6 +39,19 @@ export default async function handler(req: any, res: any) {
     if (!lead || typeof lead !== 'object') return res.status(400).json({ error: 'Missing lead payload' })
 
     await verifyTurnstileIfConfigured(turnstileToken, req.headers?.['x-forwarded-for'])
+
+    const normalizedCustomerPhone = normalizeNorthAmericanPhone(lead.customer_phone)
+    if (!normalizedCustomerPhone) {
+      return res.status(400).json({ error: 'Please enter a valid Canadian phone number, such as 403-555-1234.' })
+    }
+
+    const normalizedCustomerEmail = normalizeOptionalEmail(lead.customer_email)
+    if (normalizedCustomerEmail === null) {
+      return res.status(400).json({ error: 'Please enter a valid email address, or leave this field blank.' })
+    }
+
+    lead.customer_phone = normalizedCustomerPhone
+    lead.customer_email = normalizedCustomerEmail
 
     const sourceUrl = String(source_url || req.headers?.referer || '')
     const row = flatCustomerLead(lead, sourceUrl)
