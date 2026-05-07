@@ -836,8 +836,8 @@ function normalizeNorthAmericanPhone(input: string): string | null {
   const raw = String(input || '').trim()
   let digits = raw.replace(/\D/g, '')
 
-  // The visible +1 prefix is fixed. Users should type only the 10 local digits.
-  // If someone pastes +1, normalize it safely.
+  // +1 is fixed in the UI. Users type the 10 local digits only.
+  // If someone pastes a +1 number, normalize it safely.
   if (digits.length === 11 && digits.startsWith('1')) {
     digits = digits.slice(1)
   }
@@ -865,6 +865,21 @@ function normalizeOptionalEmail(input: string): string | null {
   const raw = String(input || '').trim()
   if (!raw) return ''
   return normalizeEmail(raw)
+}
+
+function formatLocalPhoneInput(input: string): string {
+  let digits = String(input || '').replace(/\D/g, '')
+
+  // If someone pastes +1 or a leading 1, remove it from the editable field.
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+
+  digits = digits.slice(0, 10)
+
+  if (digits.length > 6) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+  if (digits.length > 3) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return digits
 }
 
 const USE_REMOTE_API = String(import.meta.env.VITE_USE_REMOTE_API || '').toLowerCase() === 'true'
@@ -1743,7 +1758,12 @@ function RequestForm({ lang }: { lang: Lang }) {
       <div className="mt-5 rounded-[1.5rem] bg-red-50 p-4 ring-1 ring-red-100"><b className="text-red-950">{lang === 'zh' ? '危险/受限物品' : 'Hazardous / restricted items'}</b><div className="mt-3 grid gap-2 sm:grid-cols-2">{blockedItems.map(o => <ChoiceCard key={o.id} danger selected={blocked.includes(o.id)} onClick={() => setBlocked(toggleValue(blocked, o.id))} title={o[lang]} />)}</div>{blocked.length > 0 && <p className="mt-4 text-sm leading-6 text-red-900"><AlertTriangle className="mr-2 inline" size={16}/>{lang === 'zh' ? '这些物品可能需要 City of Calgary 特殊处理，不会作为普通清运单自动分发。' : 'These items may require City of Calgary special disposal and will not be auto-dispatched as a regular junk lead.'}</p>}</div>
 
       <StepTitle n="5" title={lang === 'zh' ? '联系方式' : 'Contact'} className="mt-8" />
-      <div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/><label><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '电话' : 'Phone'}</span><input value={contact.phone} onChange={e => { setContact({ ...contact, phone: e.target.value }); setPhoneVerified(false); setOtpSentAt('') }} className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"/><p className="mt-2 text-xs text-slate-500">{lang === 'zh' ? '提交后可能会先电话或短信确认，确认后才会分享给本地服务商。' : 'We may call or text to confirm before sharing your request with local providers.'}</p></label><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/><PhoneInput
+                    label={lang === 'zh' ? '电话' : 'Phone'}
+                    value={contact.phone}
+                    setValue={v => { setContact({ ...contact, phone: v }); setPhoneVerified(false); setOtpSentAt('') }}
+                    help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
+                  /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
       <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span><textarea value={contact.description} onChange={e => setContact({ ...contact, description: e.target.value })} placeholder={lang === 'zh' ? '例如：Beltline 公寓，有一张沙发和一个床垫，本周清走。' : 'Example: Beltline apartment, sofa and mattress, this week.'} className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label>
       <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{lang === 'zh' ? '上传照片（可选）' : 'Upload photos (optional)'}<input type="file" multiple accept="image/*" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>{photos.length > 0 && <p className="mt-2 text-xs text-slate-500">{photos.length} {lang === 'zh' ? '张照片已选择' : 'photo(s) selected'}</p>}
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
@@ -1848,7 +1868,12 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
   if (done) return <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-black/5"><CheckCircle2 className="text-green-700" size={36}/><h2 className="mt-4 text-3xl font-semibold">{lang === 'zh' ? '已加入 Beta 名单' : 'You are on the beta list'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '已收到。Beta 阶段不会收月费，也不需要下载 App；如未来启用付费查看联系方式，规则会在查看前显示。' : 'Received. During beta there is no monthly fee and no app; if paid contact access is introduced later, terms will be shown before access.'}</p><button onClick={() => setDone(false)} className="mt-6 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white">{lang === 'zh' ? '继续编辑' : 'Add another'}</button></div>
 
-  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><Input label={lang === 'zh' ? '电话' : 'Phone'} value={form.phone} setValue={v => setForm({ ...form, phone: v })}/><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
+  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><PhoneInput
+                    label={lang === 'zh' ? '电话' : 'Phone'}
+                    value={form.phone}
+                    setValue={v => setForm({ ...form, phone: v })}
+                    help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
+                  /><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
     <MultiSelect title={lang === 'zh' ? '服务区域' : 'Service areas'} options={areaOptions as any} selected={areas} setSelected={v => setAreas(v as Area[])} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '可接清运类型' : 'Accepted job types'} options={providerServiceOptions} selected={services} setSelected={setServices} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '车辆能力' : 'Vehicle capability'} options={vehicleOptions} selected={vehicles} setSelected={setVehicles} lang={lang}/>
@@ -2265,6 +2290,24 @@ function StepTitle({ n, title, className='' }: { n: string; title: string; class
 function ChoiceCard({ selected, onClick, title, danger=false }: { selected: boolean; onClick: () => void; title: string; danger?: boolean }) { return <button type="button" onClick={onClick} className={cn('rounded-2xl border p-4 text-left text-sm font-semibold transition', selected ? (danger ? 'border-red-700 bg-red-100 text-red-950 ring-2 ring-red-700/10 shadow-sm' : 'border-red-700 bg-red-50 text-red-950 ring-2 ring-red-700/10 shadow-sm') : 'border-black/10 bg-white text-slate-700 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm')}>{title}</button> }
 function MultiSelect({ title, options, selected, setSelected, lang }: { title: string; options: Array<{ id: string; en: string; zh: string }>; selected: string[]; setSelected: (v: string[]) => void; lang: Lang }) { return <div className="mt-6"><b>{title}</b><div className="mt-3 flex flex-wrap gap-2">{options.map(o => <button key={o.id} type="button" onClick={() => setSelected(toggleValue(selected, o.id))} className={cn('rounded-full px-4 py-2 text-sm font-semibold ring-1', selected.includes(o.id) ? 'bg-red-700 text-white ring-red-700' : 'bg-white text-slate-700 ring-black/10')}>{o[lang]}</button>)}</div></div> }
 function Select({ label, value, setValue, options, lang }: { label: string; value: string; setValue: (v: string) => void; options: Array<{ id: string; en: string; zh: string }>; lang: Lang }) { return <label><span className="mb-2 block text-sm font-semibold">{label}</span><select value={value} onChange={e => setValue(e.target.value)} className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10">{options.map(o => <option key={o.id} value={o.id}>{o[lang]}</option>)}</select></label> }
+function PhoneInput({ label, value, setValue, help='' }: { label: string; value: string; setValue: (v: string) => void; help?: string }) {
+  return <label>
+    <span className="mb-2 block text-sm font-semibold">{label}</span>
+    <div className="flex items-stretch gap-2">
+      <div className="flex min-w-[64px] items-center justify-center rounded-2xl border border-black/10 bg-slate-50 px-4 text-sm font-bold text-slate-700">+1</div>
+      <input
+        inputMode="tel"
+        autoComplete="tel-national"
+        value={formatLocalPhoneInput(value)}
+        onChange={e => setValue(formatLocalPhoneInput(e.target.value))}
+        placeholder="403-555-1234"
+        className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+      />
+    </div>
+    {help && <p className="mt-2 text-xs text-slate-500">{help}</p>}
+  </label>
+}
+
 function Input({ label, value, setValue, placeholder='' }: { label: string; value: string; setValue: (v: string) => void; placeholder?: string }) { return <label><span className="mb-2 block text-sm font-semibold">{label}</span><input value={value} onChange={e => setValue(e.target.value)} placeholder={placeholder} className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label> }
 function Stat({ label, value }: { label: string; value: number }) { return <div className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-black/5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-semibold text-red-700">{value}</p></div> }
 function AdminList({ title, rows }: { title: string; rows: string[] }) { return <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h2 className="text-xl font-semibold">{title}</h2><div className="mt-4 grid gap-3">{rows.length ? rows.map((r, i) => <div key={i} className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">{r}</div>) : <p className="text-sm text-slate-500">No data yet.</p>}</div></div> }
