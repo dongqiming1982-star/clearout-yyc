@@ -22,9 +22,24 @@ export function normalizeNorthAmericanPhone(input: unknown): string | null {
 
 export function normalizeEmail(input: unknown): string | null {
   const email = String(input || '').trim().toLowerCase()
+
   if (!email) return null
   if (email.length > 254) return null
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return null
+  if (email.includes('..')) return null
+
+  // Practical email format validation.
+  // It blocks obvious bad input without trying to fully validate every RFC edge case.
+  if (!/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(email)) {
+    return null
+  }
+
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return null
+  if (local.length > 64) return null
+  if (domain.length > 253) return null
+  if (domain.startsWith('-') || domain.endsWith('-')) return null
+  if (domain.split('.').some(part => !part || part.startsWith('-') || part.endsWith('-'))) return null
+
   return email
 }
 

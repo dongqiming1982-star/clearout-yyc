@@ -1,5 +1,5 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
-import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
+import { normalizeNorthAmericanPhone, normalizeOptionalEmail, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
 import { sendPendingProviderEmails } from './_lib/providerNotifications.js'
