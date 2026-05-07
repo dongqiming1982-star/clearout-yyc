@@ -833,11 +833,19 @@ function optionLabel(options: ReadonlyArray<{id: string; en: string; zh: string}
 function fileMeta(file?: File | null): FileMeta | null { return file ? { file_name: file.name, file_size: file.size, file_type: file.type || 'unknown', uploaded_at: new Date().toISOString(), review_status: 'uploaded' } : null }
 
 function normalizeNorthAmericanPhone(input: string): string | null {
-  let digits = String(input || '').replace(/\D/g, '')
-  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1)
+  const raw = String(input || '').trim()
+  const digits = raw.replace(/\D/g, '')
+
+  // The +1 country code is fixed by the platform UI.
+  // Users must enter the 10-digit local number only.
   if (digits.length !== 10) return null
+
+  // NANP rule: area code and exchange cannot start with 0 or 1.
   if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(digits)) return null
+
+  // Reject obvious fake numbers like 1111111111 or 5555555555.
   if (/^(\d)\1{9}$/.test(digits)) return null
+
   return `+1${digits}`
 }
 
