@@ -148,7 +148,7 @@ async function loadAll() {
 }
 
 async function loadSummary() {
-  const { summary } = await api('/api/admin/summary')
+  const { summary } = await api('/api/admin?resource=summary')
   document.getElementById('stats').innerHTML = `
     <div class="card stat"><b>${summary.providers_total}</b><span>Providers total</span></div>
     <div class="card stat"><b>${summary.providers_pending}</b><span>Providers pending</span></div>
@@ -158,12 +158,12 @@ async function loadSummary() {
 }
 
 async function providerAction(provider_id, action) {
-  await api('/api/admin/provider-action', { method: 'POST', body: JSON.stringify({ provider_id, action }) })
+  await api('/api/admin?resource=provider&action=update', { method: 'POST', body: JSON.stringify({ provider_id, action }) })
   await loadAll()
 }
 
 async function loadProviders() {
-  const { providers } = await api('/api/admin/providers')
+  const { providers } = await api('/api/admin?resource=providers')
   document.getElementById('providersPanel').innerHTML = `
     <h2>Providers</h2>
     <div class="scroll"><table>
@@ -193,12 +193,12 @@ async function loadProviders() {
 }
 
 async function leadAction(lead_id, action) {
-  await api('/api/admin/lead-action', { method: 'POST', body: JSON.stringify({ lead_id, action }) })
+  await api('/api/admin?resource=lead&action=update', { method: 'POST', body: JSON.stringify({ lead_id, action }) })
   await loadAll()
 }
 
 async function loadLeads() {
-  const { leads } = await api('/api/admin/leads')
+  const { leads } = await api('/api/admin?resource=leads')
   document.getElementById('leadsPanel').innerHTML = `
     <h2>Leads</h2>
     <div class="scroll"><table>
@@ -226,7 +226,7 @@ async function loadLeads() {
 }
 
 async function loadClaims() {
-  const { claims } = await api('/api/admin/claims')
+  const { claims } = await api('/api/admin?resource=claims')
   document.getElementById('claimsPanel').innerHTML = `
     <h2>Claims</h2>
     <div class="scroll"><table>
