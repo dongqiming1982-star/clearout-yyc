@@ -2,7 +2,7 @@ import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
-import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 
 function firstText(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value || '')
@@ -62,6 +62,7 @@ export default async function handler(req: any, res: any) {
     let supabase: any = { skipped: true }
     let notificationRecords: any = { skipped: true }
     let providerEmailSend: any = { skipped: true }
+        let providerSmsSend: any = { skipped: true }
 
     if (hasSupabaseConfig()) {
       const created = await supabaseRpc<any>('create_public_lead', mapLeadToRpc(lead, sourceUrl))
@@ -73,6 +74,7 @@ export default async function handler(req: any, res: any) {
         })
         notificationRecords = { skipped: false, created: count }
         providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
+        providerSmsSend = await sendPendingProviderSms()
       }
     }
 
@@ -85,7 +87,8 @@ export default async function handler(req: any, res: any) {
       ? 'No SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY, GOOGLE_SHEETS_WEBHOOK_URL, or RESEND_API_KEY/LEAD_NOTIFY_TO configured. The API accepted the form but did not store/send it anywhere.'
       : ''
 
-    return res.status(200).json({ ok: true, lead_id: row.lead_id, supabase, notificationRecords, providerEmailSend, createdDispatches: notificationRecords.created || 0, sheet, email, warning })
+    return res.status(200).json({ ok: true, lead_id: row.lead_id, supabase, notificationRecords, providerEmailSend,
+        providerSmsSend, createdDispatches: notificationRecords.created || 0, sheet, email, warning })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return res.status(500).json({ error: message })

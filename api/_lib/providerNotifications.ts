@@ -1,10 +1,11 @@
 import { supabasePatch, supabaseSelect } from './supabase.js'
+import { getProviderSmsBatchLimit, normalizeNorthAmericanSmsPhone, sendTwilioSms } from './providerSms.js'
 
 type NotificationRow = {
   id: string
   claim_url: string
   channel: 'email' | 'sms'
-  provider?: { id?: string; provider_token?: string; email?: string; business_name?: string; contact_name?: string }
+  provider?: { id?: string; provider_token?: string; email?: string; phone?: string; business_name?: string; contact_name?: string; notify_by_sms?: boolean | null; sms_opt_out_at?: string | null }
   lead?: { community_or_postal?: string; area?: string; service_type?: string; job_size?: string; timeline?: string; notes?: string }
 }
 
@@ -136,4 +137,84 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
   }
 
   return { skipped: false, pending: pending.length, sent, failed, skippedRows: skipped }
+}
+
+
+export async function sendPendingProviderSms(limit = getProviderSmsBatchLimit()) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 500))
+  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,provider:providers!provider_notifications_provider_fk(id,provider_token,phone,business_name,contact_name,notify_by_sms,sms_opt_out_at),lead:leads!provider_notifications_lead_fk(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.sms&order=created_at.asc&limit=${safeLimit}`)
+
+  let sent = 0
+  let failed = 0
+  let skipped = 0
+
+  for (const n of pending) {
+    const providerPhone = normalizeNorthAmericanSmsPhone(n.provider?.phone)
+
+    if (!providerPhone) {
+      await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, {
+        status: 'skipped',
+        error_message: 'Provider phone missing or invalid',
+      })
+      skipped += 1
+      continue
+    }
+
+    if (n.provider?.notify_by_sms === false || n.provider?.sms_opt_out_at) {
+      await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, {
+        status: 'skipped',
+        error_message: 'Provider SMS notifications are disabled or opted out',
+      })
+      skipped += 1
+      continue
+    }
+
+    const lead = n.lead || {}
+    const area = `${lead.community_or_postal || 'Calgary'} ${lead.area || ''}`.trim()
+    const serviceType = lead.service_type || 'junk removal'
+    const timing = lead.timeline || 'timing not specified'
+
+    const body = [
+      `Clearout YYC: New lead in ${area}.`,
+      `${serviceType}. ${timing}.`,
+      `Claim: ${n.claim_url}`,
+      'Reply STOP to opt out.'
+    ].join(' ')
+
+    try {
+      await sleep(250)
+      const result = await sendTwilioSms(providerPhone, body)
+
+      if (result.sent) {
+        await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, {
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+          error_message: null,
+        })
+        sent += 1
+      } else {
+        await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, {
+          status: result.skipped ? 'skipped' : 'failed',
+          error_message: result.reason || result.error || 'Twilio SMS send failed',
+        })
+
+        if (result.skipped) skipped += 1
+        else failed += 1
+      }
+    } catch (err) {
+      await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, {
+        status: 'failed',
+        error_message: err instanceof Error ? err.message : String(err),
+      })
+      failed += 1
+    }
+  }
+
+  return {
+    skipped: false,
+    pending: pending.length,
+    sent,
+    failed,
+    skippedRows: skipped,
+  }
 }

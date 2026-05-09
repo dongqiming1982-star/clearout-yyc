@@ -1,6 +1,6 @@
 import { assertAdmin, handleAdminError, supabaseAdminFetch } from './_lib/admin.js'
 import { supabaseRpc } from './_lib/supabase.js'
-import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 import { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
 
 function daysFromNow(days: number) {
@@ -116,6 +116,7 @@ async function leadAction(req: any, res: any) {
   const lead = Array.isArray(updated) ? updated[0] : updated
   let notificationRecords: any = { skipped: true }
   let providerEmailSend: any = { skipped: true }
+  let providerSmsSend: any = { skipped: true }
 
   if (action === 'publish' && lead?.public_id) {
     const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
@@ -124,9 +125,10 @@ async function leadAction(req: any, res: any) {
     })
     notificationRecords = { skipped: false, created: count }
     providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
+    providerSmsSend = await sendPendingProviderSms()
   }
 
-  return res.status(200).json({ ok: true, lead, notificationRecords, providerEmailSend })
+  return res.status(200).json({ ok: true, lead, notificationRecords, providerEmailSend, providerSmsSend })
 }
 
 async function getClaims(res: any) {
