@@ -9,22 +9,67 @@ function daysFromNow(days: number) {
 }
 
 async function getSummary(res: any) {
-  const providers: any[] = await supabaseAdminFetch('providers?select=id,approved,active&limit=1000')
-  const leads: any[] = await supabaseAdminFetch('leads?select=id,status&limit=1000')
-  const claims: any[] = await supabaseAdminFetch('lead_claims?select=id,access,status&limit=1000')
+  const providers: any[] = await supabaseAdminFetch('providers?select=id,approved,active,created_at&limit=1000')
+  const leads: any[] = await supabaseAdminFetch('leads?select=id,status,created_at&limit=1000')
+  const claims: any[] = await supabaseAdminFetch('lead_claims?select=id,access,status,created_at&limit=1000')
+
+  function calgaryParts(value: any) {
+    const d = value ? new Date(value) : new Date()
+    if (Number.isNaN(d.getTime())) return { ymd: '', ym: '' }
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Edmonton',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d)
+
+    const year = parts.find(p => p.type === 'year')?.value || ''
+    const month = parts.find(p => p.type === 'month')?.value || ''
+    const day = parts.find(p => p.type === 'day')?.value || ''
+
+    return {
+      ymd: `${year}-${month}-${day}`,
+      ym: `${year}-${month}`,
+    }
+  }
+
+  const today = calgaryParts(new Date()).ymd
+  const month = calgaryParts(new Date()).ym
+
+  function isToday(row: any) {
+    return calgaryParts(row?.created_at).ymd === today
+  }
+
+  function isThisMonth(row: any) {
+    return calgaryParts(row?.created_at).ym === month
+  }
 
   const leadStatus: Record<string, number> = {}
   for (const lead of leads) leadStatus[lead.status] = (leadStatus[lead.status] || 0) + 1
+
+  const pendingProviders = providers.filter(p => !p.approved)
 
   return res.status(200).json({
     ok: true,
     summary: {
       providers_total: providers.length,
-      providers_pending: providers.filter(p => !p.approved).length,
+      providers_pending: pendingProviders.length,
       providers_active: providers.filter(p => p.approved && p.active).length,
+
+      providers_today: providers.filter(isToday).length,
+      providers_month: providers.filter(isThisMonth).length,
+      providers_pending_today: pendingProviders.filter(isToday).length,
+      providers_pending_month: pendingProviders.filter(isThisMonth).length,
+
       leads_total: leads.length,
+      leads_today: leads.filter(isToday).length,
+      leads_month: leads.filter(isThisMonth).length,
       lead_status: leadStatus,
+
       claims_total: claims.length,
+      claims_today: claims.filter(isToday).length,
+      claims_month: claims.filter(isThisMonth).length,
       claims_shared: claims.filter(c => c.access === 'shared').length,
       claims_exclusive: claims.filter(c => c.access === 'exclusive').length,
     },
