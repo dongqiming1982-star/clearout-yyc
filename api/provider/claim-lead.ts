@@ -1,4 +1,5 @@
 import { supabaseRpc } from '../_lib/supabase.js'
+import { getPlatformSettings } from '../_lib/platformSettings.js'
 
 export default async function handler(req: any, res: any) {
   try {
@@ -11,6 +12,14 @@ export default async function handler(req: any, res: any) {
 
     if (!leadId || !providerToken) {
       return res.status(400).json({ error: 'Missing lead or token' })
+    }
+
+    const platformSettings = await getPlatformSettings()
+    if (!platformSettings.provider_claims_enabled) {
+      return res.status(423).json({
+        error: 'Claiming is temporarily paused by Clearout YYC.',
+        code: 'provider_claims_paused',
+      })
     }
 
     const result = await supabaseRpc<any>('claim_lead_free_beta', {

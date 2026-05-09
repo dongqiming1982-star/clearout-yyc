@@ -2260,30 +2260,271 @@ function ProviderLeadsPage({ lang }: { lang: Lang }) {
 
 function ProviderCTA({ lang }: { lang: Lang }) { return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><div className="rounded-[2rem] bg-red-700 p-7 text-white shadow-sm sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9"><div><p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-100">{lang === 'zh' ? '服务商' : 'Providers'}</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">{lang === 'zh' ? '免费接收已确认清运线索' : 'Receive confirmed junk removal leads for free'}</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-red-50">{lang === 'zh' ? '无 App，无月费。只发给 opt-in 服务商。' : 'No app. No monthly fee. Sent only to opt-in providers.'}</p></div><button onClick={() => go('/providers')} className="mt-6 rounded-full bg-white px-6 py-3 text-sm font-semibold text-red-700 hover:bg-red-50 sm:mt-0">{lang === 'zh' ? '加入接单名单' : 'Join provider list'}</button></div></section> }
 
+
+type AdminPlatformSettings = {
+  customer_requests_enabled: boolean
+  lead_dispatch_enabled: boolean
+  provider_claims_enabled: boolean
+  lead_dispatch_channel: 'email' | 'sms'
+}
+
+type AdminSettingKey = keyof AdminPlatformSettings
+
 function AdminPage({ lang }: { lang: Lang }) {
-  const [tick, setTick] = useState(0)
+  const [adminToken, setAdminToken] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('token') || localStorage.getItem('clearout_admin_token') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [settings, setSettings] = useState<AdminPlatformSettings | null>(null)
+  const [summary, setSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState<string>('')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+
   const leads = getList<Lead>('clearout_leads')
   const providers = getList<ProviderApplication>('clearout_providers')
   const dispatches = getList<Dispatch>('clearout_dispatches')
-  function seedProviders() {
-    const seeds: Array<Partial<ProviderApplication>> = [
-      { provider_display_name: 'NW Pickup Hauling Demo', phone: '403-555-0101', service_areas: ['nw'], vehicle_capabilities: ['pickup'], max_vehicle_level: 2, services_accepted: ['mattress_bed','sofa_furniture','move_out_leftovers'] },
-      { provider_display_name: 'Central Clearout Demo', phone: '403-555-0202', service_areas: ['central','sw'], vehicle_capabilities: ['cargo_van','pickup_trailer'], max_vehicle_level: 3, services_accepted: ['sofa_furniture','move_out_leftovers','appliances_electronics'] },
-      { provider_display_name: 'SE Trailer Junk Demo', phone: '403-555-0303', service_areas: ['se'], vehicle_capabilities: ['pickup_trailer','dump_trailer'], max_vehicle_level: 4, services_accepted: ['garage_basement','yard_waste','renovation_debris','move_out_leftovers'] },
-    ]
-    seeds.forEach(s => saveList<ProviderApplication>('clearout_providers', {
-      application_id: uid('provider'), created_at: new Date().toISOString(), approval_status: 'submitted', active: true, beta_opt_in: true, verified: false, last_assigned_at: null,
-      provider_display_name: s.provider_display_name || 'Demo Provider', contact_name: '', phone: s.phone || '', email: '', service_areas: (s.service_areas as Area[]) || ['central'], services_accepted: s.services_accepted || [], vehicle_capabilities: s.vehicle_capabilities || [], max_vehicle_level: s.max_vehicle_level || 2, crew_capacity: 'two',
-      accepts_sms_leads: true, accepts_email_leads: false, sms_consent_confirmed: true, preferred_notification: 'sms', daily_lead_limit: 20, available_days: ['mon','tue','wed','thu','fri','sat'], available_time_windows: ['flexible'], accepts_same_day: 'depends', refund_or_bad_number_policy_seen: true,
-      provider_type: 'not_sure', legal_owner_name: '', corporation_legal_name: '', registered_trade_name: '', business_number_bn: '', gst_hst_account: '', city_business_id: '', alberta_registration_proof: null,
-      general_liability_status: 'not_sure', commercial_auto_status: 'not_sure', insurance_company: '', policy_number: '', insurance_expiry: '', general_liability_proof: null, commercial_auto_proof: null,
-      uses_helpers: 'not_sure', wcb_status: 'not_sure', wcb_proof: null, special_item_capabilities: [], condo_jobs: 'depends_loading_zone', legal_operation_confirmed: true, no_illegal_dumping_confirmed: true, independent_provider_confirmed: true, terms_confirmed: true,
-    }))
-    setTick(tick + 1)
+
+  async function adminApi<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const token = adminToken.trim()
+    const response = await fetch(`${API_BASE_URL}/api/admin${path}`, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': token,
+        ...(init.headers || {}),
+      },
+    })
+
+    const text = await response.text()
+    let data: any = null
+    try { data = text ? JSON.parse(text) : null } catch { data = text }
+
+    if (!response.ok) {
+      throw new Error(data?.error || text || `Admin request failed: ${response.status}`)
+    }
+
+    return data as T
   }
-  function clearAll() { ['clearout_leads','clearout_providers','clearout_dispatches'].forEach(k => localStorage.removeItem(k)); setTick(tick + 1) }
-  return <main><PageHero eyebrow="Admin" title={lang === 'zh' ? '本地模拟后台' : 'Local demo admin'} text={lang === 'zh' ? '本页仅用于本地测试；正式上线先接 Google Sheet / Email，后续再接短信和付款。' : 'This page is for local testing; launch mode sends forms to Google Sheet / Email, with SMS and payments later.'}/><section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><div className="flex flex-wrap gap-3"><button onClick={seedProviders} className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white">Seed demo providers</button><button onClick={clearAll} className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-black/10">Clear local data</button></div><div className="mt-6 grid gap-4 md:grid-cols-4"><Stat label="Leads" value={leads.length}/><Stat label="Dispatches" value={dispatches.length}/><Stat label="Providers" value={providers.length}/><Stat label="Rejected" value={leads.filter(l => !l.dispatch_eligible).length}/></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><AdminList title="Recent leads" rows={leads.slice(0, 8).map(l => `${l.community_or_postal} · ${l.community_slug || 'custom'} · ${areaName(l.area, 'en')} · ${l.phone_verified ? 'phone verified' : 'not verified'} · ${l.lead_grade} · ${l.status} · shared ${l.shared_access_prices?.join('/') || 'n/a'} · exclusive $${l.exclusive_access_fee || 0}`)} /><AdminList title="Providers" rows={providers.slice(0, 8).map(p => `${p.provider_display_name} · ${p.phone} · ${p.service_areas.join('/')} · max vehicle ${p.max_vehicle_level}`)} /><AdminList title="Dispatches" rows={dispatches.slice(0, 8).map(d => `${d.provider_name} ← ${d.lead_id} · ${d.payment_status} · future $${d.future_lead_access_fee}`)} /></div></section></main>
+
+  async function loadAdmin() {
+    if (!adminToken.trim()) return
+    setLoading(true)
+    setError('')
+    setMessage('')
+    try {
+      localStorage.setItem('clearout_admin_token', adminToken.trim())
+
+      const settingsData = await adminApi<{ ok: boolean; settings: AdminPlatformSettings }>('?resource=settings')
+      setSettings(settingsData.settings)
+
+      const summaryData = await adminApi<{ ok: boolean; summary: any }>('?resource=summary')
+      setSummary(summaryData.summary)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Admin load failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function updateSetting(key: AdminSettingKey, value: boolean | 'email' | 'sms') {
+    setSaving(key)
+    setError('')
+    setMessage('')
+    try {
+      const data = await adminApi<{ ok: boolean; settings: AdminPlatformSettings }>(
+        '?resource=settings&action=update',
+        {
+          method: 'POST',
+          body: JSON.stringify({ key, value }),
+        }
+      )
+
+      setSettings(data.settings)
+      setMessage(lang === 'zh' ? '设置已更新。' : 'Settings updated.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Update failed.')
+    } finally {
+      setSaving('')
+    }
+  }
+
+  useEffect(() => {
+    if (adminToken.trim()) {
+      loadAdmin()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const requestOn = Boolean(settings?.customer_requests_enabled)
+  const dispatchOn = Boolean(settings?.lead_dispatch_enabled)
+  const claimsOn = Boolean(settings?.provider_claims_enabled)
+  const channel = settings?.lead_dispatch_channel || 'email'
+
+  return <main>
+    <PageHero
+      eyebrow="Admin"
+      title={lang === 'zh' ? '运营总控后台' : 'Platform controls'}
+      text={lang === 'zh'
+        ? '控制客户提交、系统派单、服务商接单，以及 Email / SMS 派单通道。'
+        : 'Control customer requests, lead dispatch, provider claiming, and Email / SMS dispatch channel.'}
+    />
+
+    <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10">
+      <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5">
+        <h2 className="text-xl font-semibold">{lang === 'zh' ? 'Admin token' : 'Admin token'}</h2>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            value={adminToken}
+            onChange={e => setAdminToken(e.target.value)}
+            placeholder="ADMIN_TOKEN"
+            type="password"
+            className="min-w-0 flex-1 rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+          />
+          <button
+            onClick={loadAdmin}
+            disabled={loading || !adminToken.trim()}
+            className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {loading ? (lang === 'zh' ? '加载中…' : 'Loading…') : (lang === 'zh' ? '加载后台' : 'Load admin')}
+          </button>
+        </div>
+
+        {error && <div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900 ring-1 ring-red-200">{error}</div>}
+        {message && <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 ring-1 ring-emerald-200">{message}</div>}
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-4">
+        <Stat label="Providers" value={Number(summary?.providers_total || providers.length)}/>
+        <Stat label="Active providers" value={Number(summary?.providers_active || 0)}/>
+        <Stat label="Leads" value={Number(summary?.leads_total || leads.length)}/>
+        <Stat label="Claims" value={Number(summary?.claims_total || 0)}/>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <AdminControlCard
+          title={lang === 'zh' ? '客户提交' : 'Customer requests'}
+          status={requestOn ? 'ON' : 'OFF'}
+          description={lang === 'zh'
+            ? '关闭后，客户不能提交新的清运需求；后端 API 会直接拒绝。'
+            : 'When paused, customers cannot submit new requests; the backend API rejects submissions.'}
+        >
+          <AdminToggleButton
+            active={requestOn}
+            disabled={!settings || saving === 'customer_requests_enabled'}
+            onClick={() => updateSetting('customer_requests_enabled', !requestOn)}
+            onText={lang === 'zh' ? '允许提交' : 'Accepting'}
+            offText={lang === 'zh' ? '暂停提交' : 'Paused'}
+          />
+        </AdminControlCard>
+
+        <AdminControlCard
+          title={lang === 'zh' ? '系统派单' : 'Lead dispatch'}
+          status={dispatchOn ? 'ON' : 'OFF'}
+          description={lang === 'zh'
+            ? '关闭后，客户需求仍可进入后台，但不会发送给服务商。'
+            : 'When paused, leads can still enter admin, but notifications are not sent to providers.'}
+        >
+          <AdminToggleButton
+            active={dispatchOn}
+            disabled={!settings || saving === 'lead_dispatch_enabled'}
+            onClick={() => updateSetting('lead_dispatch_enabled', !dispatchOn)}
+            onText={lang === 'zh' ? '允许派单' : 'Dispatch on'}
+            offText={lang === 'zh' ? '暂停派单' : 'Dispatch paused'}
+          />
+        </AdminControlCard>
+
+        <AdminControlCard
+          title={lang === 'zh' ? '服务商接单' : 'Provider claiming'}
+          status={claimsOn ? 'ON' : 'OFF'}
+          description={lang === 'zh'
+            ? '关闭后，服务商即使打开 claim link，也不能领取客户联系方式。'
+            : 'When paused, providers can open claim links but cannot unlock customer contact details.'}
+        >
+          <AdminToggleButton
+            active={claimsOn}
+            disabled={!settings || saving === 'provider_claims_enabled'}
+            onClick={() => updateSetting('provider_claims_enabled', !claimsOn)}
+            onText={lang === 'zh' ? '允许接单' : 'Claiming on'}
+            offText={lang === 'zh' ? '暂停接单' : 'Claiming paused'}
+          />
+        </AdminControlCard>
+
+        <AdminControlCard
+          title={lang === 'zh' ? '派单通道' : 'Dispatch channel'}
+          status={channel.toUpperCase()}
+          description={lang === 'zh'
+            ? '控制新派单使用 Email 还是 SMS。默认先保持 Email，正式切换时再改 SMS。'
+            : 'Controls whether new dispatches use Email or SMS. Keep Email by default until SMS cutover.'}
+        >
+          <div className="flex flex-wrap gap-2">
+            <button
+              disabled={!settings || saving === 'lead_dispatch_channel'}
+              onClick={() => updateSetting('lead_dispatch_channel', 'email')}
+              className={cn(
+                'rounded-full px-5 py-2.5 text-sm font-semibold ring-1',
+                channel === 'email' ? 'bg-slate-950 text-white ring-slate-950' : 'bg-white text-slate-700 ring-black/10 hover:bg-slate-50'
+              )}
+            >
+              Email
+            </button>
+            <button
+              disabled={!settings || saving === 'lead_dispatch_channel'}
+              onClick={() => updateSetting('lead_dispatch_channel', 'sms')}
+              className={cn(
+                'rounded-full px-5 py-2.5 text-sm font-semibold ring-1',
+                channel === 'sms' ? 'bg-red-700 text-white ring-red-700' : 'bg-white text-slate-700 ring-black/10 hover:bg-slate-50'
+              )}
+            >
+              SMS
+            </button>
+          </div>
+        </AdminControlCard>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <AdminList title="Local recent leads" rows={leads.slice(0, 8).map(l => `${l.community_or_postal} · ${l.community_slug || 'custom'} · ${areaName(l.area, 'en')} · ${l.status}`)} />
+        <AdminList title="Local dispatches" rows={dispatches.slice(0, 8).map(d => `${d.provider_name} ← ${d.lead_id} · ${d.payment_status}`)} />
+      </div>
+    </section>
+  </main>
 }
+
+function AdminControlCard({ title, description, status, children }: { title: string; description: string; status: string; children: React.ReactNode }) {
+  return <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5">
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+      <span className={cn(
+        'shrink-0 rounded-full px-3 py-1 text-xs font-bold ring-1',
+        status === 'ON' || status === 'EMAIL' ? 'bg-emerald-50 text-emerald-800 ring-emerald-200' :
+        status === 'SMS' ? 'bg-red-50 text-red-800 ring-red-200' :
+        'bg-slate-100 text-slate-700 ring-black/10'
+      )}>{status}</span>
+    </div>
+    <div className="mt-5">{children}</div>
+  </div>
+}
+
+function AdminToggleButton({ active, disabled, onClick, onText, offText }: { active: boolean; disabled: boolean; onClick: () => void; onText: string; offText: string }) {
+  return <button
+    disabled={disabled}
+    onClick={onClick}
+    className={cn(
+      'rounded-full px-5 py-2.5 text-sm font-semibold ring-1 disabled:cursor-not-allowed disabled:opacity-50',
+      active ? 'bg-emerald-600 text-white ring-emerald-600 hover:bg-emerald-700' : 'bg-slate-950 text-white ring-slate-950 hover:bg-red-700'
+    )}
+  >
+    {active ? onText : offText}
+  </button>
+}
+
 
 function FAQPage({ lang }: { lang: Lang }) {
   const rows = lang === 'zh' ? [

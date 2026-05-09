@@ -2,6 +2,7 @@ import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
+import { getPlatformSettings } from './_lib/platformSettings.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 
 function firstText(value: unknown) {
@@ -38,6 +39,14 @@ export default async function handler(req: any, res: any) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
     const { lead, turnstileToken, source_url, manualCaptcha } = req.body || {}
     if (!lead || typeof lead !== 'object') return res.status(400).json({ error: 'Missing lead payload' })
+
+    const platformSettings = await getPlatformSettings()
+    if (!platformSettings.customer_requests_enabled) {
+      return res.status(503).json({
+        error: 'Clearout YYC is temporarily not accepting new requests. Please check back later.',
+        code: 'customer_requests_paused',
+      })
+    }
 
     const captchaCheck = verifyManualCaptcha(manualCaptcha)
     if (!captchaCheck.ok) return res.status(400).json({ error: captchaCheck.error })

@@ -2,6 +2,7 @@ import { assertAdmin, handleAdminError, supabaseAdminFetch } from './_lib/admin.
 import { supabaseRpc } from './_lib/supabase.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 import { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
+import { getPlatformSettings, updatePlatformSetting } from './_lib/platformSettings.js'
 
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
@@ -159,6 +160,22 @@ async function getClaims(res: any) {
   return res.status(200).json({ ok: true, claims: enriched })
 }
 
+
+async function getSettings(res: any) {
+  const settings = await getPlatformSettings()
+  return res.status(200).json({ ok: true, settings })
+}
+
+async function settingsAction(req: any, res: any) {
+  const key = String(req.body?.key || '')
+  const value = req.body?.value
+
+  if (!key) return res.status(400).json({ error: 'Missing setting key' })
+
+  const settings = await updatePlatformSetting(key, value)
+  return res.status(200).json({ ok: true, settings })
+}
+
 export default async function handler(req: any, res: any) {
   try {
     assertAdmin(req)
@@ -171,12 +188,14 @@ export default async function handler(req: any, res: any) {
       if (resource === 'providers') return getProviders(res)
       if (resource === 'leads') return getLeads(res)
       if (resource === 'claims') return getClaims(res)
+      if (resource === 'settings') return getSettings(res)
       return res.status(400).json({ error: 'Unknown admin resource' })
     }
 
     if (req.method === 'POST') {
       if (resource === 'provider' && action === 'update') return providerAction(req, res)
       if (resource === 'lead' && action === 'update') return leadAction(req, res)
+      if (resource === 'settings' && action === 'update') return settingsAction(req, res)
       return res.status(400).json({ error: 'Unknown admin action' })
     }
 

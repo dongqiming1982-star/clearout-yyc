@@ -1,4 +1,5 @@
 import { supabasePatch, supabaseSelect } from './supabase.js'
+import { getPlatformSettings } from './platformSettings.js'
 import { getProviderSmsBatchLimit, normalizeNorthAmericanSmsPhone, sendTwilioSms } from './providerSms.js'
 
 type NotificationRow = {
@@ -56,6 +57,13 @@ export function getProviderEmailBatchLimit(defaultLimit = 200) {
 }
 
 export async function sendPendingProviderEmails(limit = getProviderEmailBatchLimit()) {
+  const platformSettings = await getPlatformSettings()
+  if (!platformSettings.lead_dispatch_enabled) {
+    return { skipped: true, reason: 'Lead dispatch is paused by admin controls.', pending: 0, sent: 0, failed: 0, skippedRows: 0 }
+  }
+  if (platformSettings.lead_dispatch_channel !== 'email') {
+    return { skipped: true, reason: `Lead dispatch channel is ${platformSettings.lead_dispatch_channel}.`, pending: 0, sent: 0, failed: 0, skippedRows: 0 }
+  }
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.LEAD_NOTIFY_FROM || 'Clearout YYC <onboarding@resend.dev>'
   if (!apiKey) return { skipped: true, reason: 'RESEND_API_KEY is not configured', pending: 0, sent: 0, failed: 0 }
