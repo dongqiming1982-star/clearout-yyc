@@ -95,7 +95,7 @@
           <h2 id="platformControlsTitle" style="margin:0;font-size:20px">Platform controls</h2>
           <div class="sub" id="platformControlsSub">Control customer submissions, dispatch, claims, and dispatch channel.</div>
         </div>
-        <button class="secondary" onclick="loadPlatformControls()" id="platformControlsRefresh">Refresh controls</button>
+        <div class="actions">\n          <button class="secondary" onclick="loadPlatformControls()" id="platformControlsRefresh">Refresh controls</button>\n          <button onclick="dispatchPendingLeads()" id="dispatchPendingLeadsBtn">Dispatch pending leads</button>\n        </div>
       </div>
       <div class="control-grid" id="platformControlsGrid" style="margin-top:14px"></div>
       <div class="control-note" id="platformControlsMessage"></div>
@@ -537,6 +537,8 @@ else showTab('providers')
     title.textContent = t('平台总控', 'Platform controls')
     sub.textContent = t('控制客户提交、系统派单、服务商接单，以及 Email / SMS 派单通道。', 'Control customer submissions, dispatch, claims, and Email / SMS dispatch channel.')
     refresh.textContent = t('刷新总控', 'Refresh controls')
+    const pendingBtn = document.getElementById('dispatchPendingLeadsBtn')
+    if (pendingBtn) pendingBtn.textContent = t('派出积压需求', 'Dispatch pending leads')
 
     const customerOn = !!settings.customer_requests_enabled
     const dispatchOn = !!settings.lead_dispatch_enabled
@@ -593,6 +595,55 @@ else showTab('providers')
       const box = document.getElementById('platformControls')
       if (box) box.style.display = 'block'
       if (msg) msg.textContent = e instanceof Error ? e.message : 'Failed to load platform controls.'
+    }
+  }
+
+
+  window.dispatchPendingLeads = async function () {
+    const msg = document.getElementById('platformControlsMessage')
+    const btn = document.getElementById('dispatchPendingLeadsBtn')
+
+    try {
+      if (btn) btn.disabled = true
+      if (msg) msg.textContent = t('正在派出积压需求…', 'Dispatching pending leads...')
+
+      const token = getAdminTokenForPlatformControls()
+      if (!token) throw new Error('Missing ADMIN_TOKEN.')
+
+      const response = await fetch('/api/admin?resource=dispatch&action=pending', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': token
+        },
+        body: JSON.stringify({ limit: 50 })
+      })
+
+      const text = await response.text()
+      let data = null
+      try { data = text ? JSON.parse(text) : null } catch { data = text }
+
+      if (!response.ok) {
+        throw new Error((data && data.error) || text || 'Dispatch pending leads failed.')
+      }
+
+      const result = data.result || {}
+      const checked = result.checked ?? 0
+      const created = result.created ?? 0
+
+      if (msg) {
+        msg.textContent = t(
+          '积压派单完成：检查 ' + checked + ' 条需求，创建 ' + created + ' 条通知。',
+          'Pending dispatch complete: checked ' + checked + ' leads, created ' + created + ' notifications.'
+        )
+      }
+
+      try { await window.loadPlatformControls() } catch {}
+      try { if (typeof window.loadAll === 'function') await window.loadAll() } catch {}
+    } catch (e) {
+      if (msg) msg.textContent = e instanceof Error ? e.message : 'Dispatch pending leads failed.'
+    } finally {
+      if (btn) btn.disabled = false
     }
   }
 

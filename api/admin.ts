@@ -176,6 +176,27 @@ async function settingsAction(req: any, res: any) {
   return res.status(200).json({ ok: true, settings })
 }
 
+
+async function dispatchPendingLeadsAction(req: any, res: any) {
+  const limitRaw = Number(req.body?.limit || 50)
+  const limit = Math.max(1, Math.min(Number.isFinite(limitRaw) ? limitRaw : 50, 200))
+
+  const result = await supabaseRpc<any>('dispatch_pending_leads', {
+    p_base_url: getClearoutBaseUrl(),
+    p_limit: limit,
+  })
+
+  const providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
+  const providerSmsSend = await sendPendingProviderSms()
+
+  return res.status(200).json({
+    ok: true,
+    result,
+    providerEmailSend,
+    providerSmsSend,
+  })
+}
+
 export default async function handler(req: any, res: any) {
   try {
     assertAdmin(req)
@@ -196,6 +217,7 @@ export default async function handler(req: any, res: any) {
       if (resource === 'provider' && action === 'update') return providerAction(req, res)
       if (resource === 'lead' && action === 'update') return leadAction(req, res)
       if (resource === 'settings' && action === 'update') return settingsAction(req, res)
+      if (resource === 'dispatch' && action === 'pending') return dispatchPendingLeadsAction(req, res)
       return res.status(400).json({ error: 'Unknown admin action' })
     }
 
