@@ -128,6 +128,22 @@
     @media (max-width: 980px) { .dispatch-overview-grid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 640px) { .dispatch-overview-grid { grid-template-columns: 1fr; } }
 
+
+    .stat-subline-force {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .stat-subline-force span {
+      border-radius: 999px;
+      background: #f1f5f9;
+      padding: 4px 8px;
+    }
+
     @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
@@ -914,6 +930,143 @@ else showTab('providers')
     setTimeout(window.loadDispatchOverview, 800)
     setTimeout(window.loadDispatchOverview, 2000)
   })
+})()
+</script>
+
+
+<script id="v272-admin-top-stats-force">
+(function () {
+  function getToken() {
+    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
+    if (inputValue) return inputValue
+
+    const keys = [
+      'clearout_admin_token',
+      'clearoutAdminToken',
+      'admin_token',
+      'adminToken',
+      'ADMIN_TOKEN',
+      'clearout_admin'
+    ]
+
+    for (const key of keys) {
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value) return value
+    }
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || ''
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value && /admin/i.test(key) && /token/i.test(key)) return value
+    }
+
+    return ''
+  }
+
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function (c) {
+      return ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[c]
+    })
+  }
+
+  function isZh() {
+    return document.getElementById('lang-zh')?.classList.contains('active')
+  }
+
+  function card(label, value, todayLabel, todayValue, monthLabel, monthValue) {
+    return [
+      '<div class="card stat">',
+      '<b>' + esc(value) + '</b>',
+      '<span>' + esc(label) + '</span>',
+      '<div class="stat-subline-force">',
+      '<span>' + esc(todayLabel) + ' ' + esc(todayValue) + '</span>',
+      '<span>' + esc(monthLabel) + ' ' + esc(monthValue) + '</span>',
+      '</div>',
+      '</div>'
+    ].join('')
+  }
+
+  function renderForcedStats(summary) {
+    const stats = document.getElementById('stats')
+    if (!stats) return
+
+    const zh = isZh()
+
+    const labels = zh ? {
+      providers: '服务商总数',
+      pendingProviders: '待审核服务商',
+      leads: '客户需求总数',
+      claims: '认领总数',
+      today: '今日',
+      month: '本月',
+      todayNew: '今日新增',
+      monthNew: '本月新增'
+    } : {
+      providers: 'Providers total',
+      pendingProviders: 'Pending providers',
+      leads: 'Leads total',
+      claims: 'Claims total',
+      today: 'Today',
+      month: 'This month',
+      todayNew: 'Today new',
+      monthNew: 'Month new'
+    }
+
+    stats.innerHTML = [
+      card(labels.providers, summary.providers_total || 0, labels.todayNew, summary.providers_today || 0, labels.monthNew, summary.providers_month || 0),
+      card(labels.pendingProviders, summary.providers_pending || 0, labels.today, summary.providers_pending_today || 0, labels.month, summary.providers_pending_month || 0),
+      card(labels.leads, summary.leads_total || 0, labels.todayNew, summary.leads_today || 0, labels.monthNew, summary.leads_month || 0),
+      card(labels.claims, summary.claims_total || 0, labels.today, summary.claims_today || 0, labels.month, summary.claims_month || 0)
+    ].join('')
+  }
+
+  window.forceRefreshTopStats = async function () {
+    const token = getToken()
+    if (!token) return
+
+    const response = await fetch('/api/admin?resource=summary&_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'x-admin-token': token }
+    })
+
+    const data = await response.json()
+    if (!response.ok || !data.ok) return
+
+    renderForcedStats(data.summary || {})
+  }
+
+  function scheduleStatsRefresh() {
+    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 200)
+    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 800)
+    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 1800)
+  }
+
+  const oldLoadAll = window.loadAll
+  if (typeof oldLoadAll === 'function') {
+    window.loadAll = async function () {
+      const result = await oldLoadAll.apply(this, arguments)
+      scheduleStatsRefresh()
+      return result
+    }
+  }
+
+  const oldSetLang = window.setLang
+  if (typeof oldSetLang === 'function') {
+    window.setLang = function () {
+      const result = oldSetLang.apply(this, arguments)
+      scheduleStatsRefresh()
+      return result
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', scheduleStatsRefresh)
+  scheduleStatsRefresh()
 })()
 </script>
 
