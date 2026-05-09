@@ -69,7 +69,7 @@ export default async function handler(req: any, res: any) {
         service_areas: asArray(application.service_areas).length ? asArray(application.service_areas) : ['calgary'],
         speaks_english: true,
         speaks_chinese: false,
-        notify_by_email: wantsEmail,
+        notify_by_email: true,
         notify_by_sms: wantsSms,
         email_opt_in_at: wantsEmail ? new Date().toISOString() : null,
         sms_opt_in_at: wantsSms ? new Date().toISOString() : null,
