@@ -1,7 +1,7 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
-import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
+import { hasSupabaseConfig, supabaseRpc, supabasePatch } from './_lib/supabase.js'
 import { getPlatformSettings } from './_lib/platformSettings.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 
@@ -76,14 +76,41 @@ export default async function handler(req: any, res: any) {
     if (hasSupabaseConfig()) {
       const created = await supabaseRpc<any>('create_public_lead', mapLeadToRpc(lead, sourceUrl))
       supabase = { skipped: false, result: created }
-      if (created?.accepted && created?.status === 'published' && created?.lead_public_id) {
-        const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
-          p_lead_public_id: created.lead_public_id,
-          p_base_url: getClearoutBaseUrl(),
-        })
-        notificationRecords = { skipped: false, created: count }
-        providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
-        providerSmsSend = await sendPendingProviderSms()
+      if (created?.accepted && created?.lead_public_id) {
+        if (!platformSettings.lead_dispatch_enabled) {
+          await supabasePatch(
+            'leads',
+            `public_id=eq.${encodeURIComponent(created.lead_public_id)}`,
+            {
+              status: 'queued',
+              publish_at: null,
+              published_at: null,
+            }
+          )
+
+          supabase = {
+            ...supabase,
+            result: {
+              ...created,
+              status: 'queued',
+              dispatch_paused: true,
+            },
+          }
+
+          notificationRecords = {
+            skipped: true,
+            reason: 'Lead dispatch is paused. Lead was queued instead of published.',
+            created: 0,
+          }
+        } else if (created?.status === 'published') {
+          const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
+            p_lead_public_id: created.lead_public_id,
+            p_base_url: getClearoutBaseUrl(),
+          })
+          notificationRecords = { skipped: false, created: count }
+          providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
+          providerSmsSend = await sendPendingProviderSms()
+        }
       }
     }
 
