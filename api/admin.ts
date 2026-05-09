@@ -80,10 +80,79 @@ async function providerAction(req: any, res: any) {
 }
 
 async function getLeads(res: any) {
-  const leads = await supabaseAdminFetch(
+  const leads: any[] = await supabaseAdminFetch(
     'leads?select=id,public_id,status,customer_name,customer_phone,customer_email,community_or_postal,area,service_type,job_size,timeline,notes,shared_claim_count,shared_limit,created_at,publish_at,published_at,expires_at&order=created_at.desc&limit=200'
   )
-  return res.status(200).json({ ok: true, leads })
+
+  const leadIds = leads.map(l => l.id).filter(Boolean)
+
+  const notifications: any[] = leadIds.length
+    ? await supabaseAdminFetch(
+        `provider_notifications?select=id,lead_id,channel,status,sent_at,error_message,created_at&lead_id=in.(${leadIds.join(',')})&order=created_at.desc&limit=5000`
+      )
+    : []
+
+  const dispatchByLeadId: Record<string, any> = {}
+
+  for (const lead of leads) {
+    dispatchByLeadId[lead.id] = {
+      total: 0,
+      email: 0,
+      sms: 0,
+      pending: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      last_channel: null,
+      last_status: null,
+      last_sent_at: null,
+      last_error_message: null,
+    }
+  }
+
+  for (const row of notifications) {
+    const item = dispatchByLeadId[row.lead_id]
+    if (!item) continue
+
+    const channel = String(row.channel || '')
+    const status = String(row.status || '')
+
+    item.total += 1
+
+    if (channel === 'email') item.email += 1
+    if (channel === 'sms') item.sms += 1
+
+    if (status === 'pending') item.pending += 1
+    if (status === 'sent') item.sent += 1
+    if (status === 'failed') item.failed += 1
+    if (status === 'skipped') item.skipped += 1
+
+    if (!item.last_status) {
+      item.last_channel = channel || null
+      item.last_status = status || null
+      item.last_sent_at = row.sent_at || null
+      item.last_error_message = row.error_message || null
+    }
+  }
+
+  const enriched = leads.map(lead => ({
+    ...lead,
+    dispatch_status: dispatchByLeadId[lead.id] || {
+      total: 0,
+      email: 0,
+      sms: 0,
+      pending: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      last_channel: null,
+      last_status: null,
+      last_sent_at: null,
+      last_error_message: null,
+    },
+  }))
+
+  return res.status(200).json({ ok: true, leads: enriched })
 }
 
 async function leadAction(req: any, res: any) {
