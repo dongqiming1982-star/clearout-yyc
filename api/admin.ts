@@ -332,6 +332,55 @@ async function getDispatchStatus(res: any) {
   })
 }
 
+
+async function getDispatchOverview(res: any) {
+  const leads: any[] = await supabaseAdminFetch(
+    'leads?select=id,public_id,status,customer_name,shared_claim_count,shared_limit,created_at&or=(status.eq.queued,status.eq.published,status.eq.shared_active)&order=created_at.asc&limit=1000'
+  )
+
+  const notifications: any[] = await supabaseAdminFetch(
+    'provider_notifications?select=id,lead_id,channel,status,sent_at,error_message,created_at&order=created_at.asc&limit=5000'
+  )
+
+  const notifiedLeadIds = new Set(notifications.map(n => n.lead_id).filter(Boolean))
+
+  const pendingDispatchLeads = leads.filter(l => {
+    const sharedCount = Number(l.shared_claim_count || 0)
+    const sharedLimit = Number(l.shared_limit || 3)
+    return !notifiedLeadIds.has(l.id) && sharedCount < sharedLimit
+  })
+
+  const notificationSummary = {
+    total: notifications.length,
+    pending: notifications.filter(n => n.status === 'pending').length,
+    sent: notifications.filter(n => n.status === 'sent').length,
+    failed: notifications.filter(n => n.status === 'failed').length,
+    skipped: notifications.filter(n => n.status === 'skipped').length,
+
+    email_pending: notifications.filter(n => n.channel === 'email' && n.status === 'pending').length,
+    email_sent: notifications.filter(n => n.channel === 'email' && n.status === 'sent').length,
+    email_failed: notifications.filter(n => n.channel === 'email' && n.status === 'failed').length,
+
+    sms_pending: notifications.filter(n => n.channel === 'sms' && n.status === 'pending').length,
+    sms_sent: notifications.filter(n => n.channel === 'sms' && n.status === 'sent').length,
+    sms_failed: notifications.filter(n => n.channel === 'sms' && n.status === 'failed').length,
+  }
+
+  return res.status(200).json({
+    ok: true,
+    overview: {
+      pending_dispatch_leads: pendingDispatchLeads.length,
+      pending_dispatch_preview: pendingDispatchLeads.slice(0, 10).map(l => ({
+        public_id: l.public_id,
+        status: l.status,
+        customer_name: l.customer_name,
+        created_at: l.created_at,
+      })),
+      notifications: notificationSummary,
+    },
+  })
+}
+
 export default async function handler(req: any, res: any) {
   try {
     assertAdmin(req)
@@ -346,6 +395,7 @@ export default async function handler(req: any, res: any) {
       if (resource === 'claims') return getClaims(res)
       if (resource === 'settings') return getSettings(res)
       if (resource === 'dispatch-status') return getDispatchStatus(res)
+      if (resource === 'dispatch-overview') return getDispatchOverview(res)
       return res.status(400).json({ error: 'Unknown admin resource' })
     }
 

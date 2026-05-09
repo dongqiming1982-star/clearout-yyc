@@ -94,6 +94,40 @@
     .dispatch-native.mid { background: #fef3c7; color: #92400e; }
     .dispatch-native.bad { background: #fee2e2; color: #991b1b; }
 
+
+    .dispatch-overview {
+      margin-top: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      background: #f8fafc;
+      padding: 14px;
+    }
+    .dispatch-overview-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .dispatch-mini {
+      border-radius: 14px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      padding: 10px;
+    }
+    .dispatch-mini b {
+      display: block;
+      font-size: 22px;
+    }
+    .dispatch-mini span {
+      color: #64748b;
+      font-size: 12px;
+    }
+    .dispatch-mini.bad b { color: #991b1b; }
+    .dispatch-mini.mid b { color: #92400e; }
+    .dispatch-mini.ok b { color: #166534; }
+    @media (max-width: 980px) { .dispatch-overview-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .dispatch-overview-grid { grid-template-columns: 1fr; } }
+
     @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
@@ -138,6 +172,7 @@
       </div>
       <div class="control-grid" id="platformControlsGrid" style="margin-top:14px"></div>
       <div class="control-note" id="platformControlsMessage"></div>
+      <div class="dispatch-overview" id="dispatchQueueOverview">Loading dispatch queue...</div>
     </section>
 
 
@@ -767,6 +802,120 @@ else showTab('providers')
 
 
 
+
+
+<script id="v272-dispatch-overview">
+(function () {
+  function getToken() {
+    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
+    if (inputValue) return inputValue
+
+    const keys = [
+      'clearout_admin_token',
+      'clearoutAdminToken',
+      'admin_token',
+      'adminToken',
+      'ADMIN_TOKEN',
+      'clearout_admin'
+    ]
+
+    for (const key of keys) {
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value) return value
+    }
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || ''
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value && /admin/i.test(key) && /token/i.test(key)) return value
+    }
+
+    return ''
+  }
+
+  function mini(label, value, cls) {
+    return '<div class="dispatch-mini ' + (cls || '') + '"><b>' + value + '</b><span>' + label + '</span></div>'
+  }
+
+  function renderOverview(overview) {
+    const box = document.getElementById('dispatchQueueOverview')
+    if (!box) return
+
+    const n = overview.notifications || {}
+    const pendingLeads = Number(overview.pending_dispatch_leads || 0)
+
+    box.innerHTML =
+      '<b>Dispatch queue overview / 派单队列总览</b>' +
+      '<div class="dispatch-overview-grid">' +
+        mini('待派单需求', pendingLeads, pendingLeads ? 'mid' : 'ok') +
+        mini('待发送 Email', Number(n.email_pending || 0), n.email_pending ? 'mid' : 'ok') +
+        mini('待发送 SMS', Number(n.sms_pending || 0), n.sms_pending ? 'mid' : 'ok') +
+        mini('发送失败', Number((n.email_failed || 0) + (n.sms_failed || 0)), ((n.email_failed || 0) + (n.sms_failed || 0)) ? 'bad' : 'ok') +
+        mini('已发送总数', Number(n.sent || 0), 'ok') +
+      '</div>' +
+      '<div class="control-note">点击“派出积压需求”后，看这里是否还有待派单 / 待发送。</div>'
+  }
+
+  window.loadDispatchOverview = async function () {
+    const box = document.getElementById('dispatchQueueOverview')
+    const token = getToken()
+
+    if (!box || !token) return
+
+    try {
+      box.innerHTML = 'Loading dispatch queue...'
+      const response = await fetch('/api/admin?resource=dispatch-overview&_=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'x-admin-token': token }
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Failed to load dispatch overview.')
+
+      renderOverview(data.overview || {})
+    } catch (e) {
+      box.innerHTML = '<span class="error">' + (e instanceof Error ? e.message : 'Failed to load dispatch overview.') + '</span>'
+    }
+  }
+
+  const oldLoadAll = window.loadAll
+  if (typeof oldLoadAll === 'function') {
+    window.loadAll = async function () {
+      const result = await oldLoadAll.apply(this, arguments)
+      setTimeout(window.loadDispatchOverview, 300)
+      setTimeout(window.loadDispatchOverview, 1200)
+      return result
+    }
+  }
+
+  const oldLoadPlatformControls = window.loadPlatformControls
+  if (typeof oldLoadPlatformControls === 'function') {
+    window.loadPlatformControls = async function () {
+      const result = await oldLoadPlatformControls.apply(this, arguments)
+      setTimeout(window.loadDispatchOverview, 300)
+      return result
+    }
+  }
+
+  const oldDispatchPendingLeads = window.dispatchPendingLeads
+  if (typeof oldDispatchPendingLeads === 'function') {
+    window.dispatchPendingLeads = async function () {
+      const result = await oldDispatchPendingLeads.apply(this, arguments)
+      setTimeout(window.loadDispatchOverview, 500)
+      setTimeout(window.loadDispatchOverview, 1500)
+      if (typeof window.loadAll === 'function') {
+        setTimeout(window.loadAll, 1200)
+      }
+      return result
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(window.loadDispatchOverview, 800)
+    setTimeout(window.loadDispatchOverview, 2000)
+  })
+})()
+</script>
 
 </body>
 </html>
