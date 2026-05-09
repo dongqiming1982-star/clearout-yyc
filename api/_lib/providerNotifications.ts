@@ -8,18 +8,38 @@ type NotificationRow = {
   leads?: { community_or_postal?: string; area?: string; service_type?: string; job_size?: string; timeline?: string; notes?: string }
 }
 
-export async function sendPendingProviderEmails(limit = 25) {
+function escapeHtml(value: unknown) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+export function getClearoutBaseUrl() {
+  return String(process.env.CLEAROUT_BASE_URL || 'https://clearout.aurorasitesolutions.com').replace(/\/+$/, '')
+}
+
+export function getProviderEmailBatchLimit(defaultLimit = 200) {
+  const raw = Number(process.env.PROVIDER_EMAIL_BATCH_LIMIT || defaultLimit)
+  if (!Number.isFinite(raw) || raw <= 0) return defaultLimit
+  return Math.min(Math.floor(raw), 500)
+}
+
+export async function sendPendingProviderEmails(limit = getProviderEmailBatchLimit()) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.LEAD_NOTIFY_FROM || 'Clearout YYC <onboarding@resend.dev>'
   if (!apiKey) return { skipped: true, reason: 'RESEND_API_KEY is not configured', pending: 0, sent: 0, failed: 0 }
 
-  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,providers(email,business_name,contact_name),leads(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&limit=${limit}`)
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 500))
+  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,providers(email,business_name,contact_name),leads(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&order=created_at.asc&limit=${safeLimit}`)
   let sent = 0
   let failed = 0
   let skipped = 0
 
   for (const n of pending) {
-    const providerEmail = n.providers?.email
+    const providerEmail = String(n.providers?.email || '').trim()
     if (!providerEmail) {
       await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, { status: 'skipped', error_message: 'Provider email missing' })
       skipped += 1
@@ -27,20 +47,39 @@ export async function sendPendingProviderEmails(limit = 25) {
     }
 
     const lead = n.leads || {}
-    const subject = `Clearout YYC beta lead — ${lead.community_or_postal || 'Calgary'} ${lead.service_type || ''}`.trim()
+    const area = `${lead.community_or_postal || 'Calgary'} ${lead.area || ''}`.trim()
+    const serviceType = lead.service_type || 'junk removal'
+    const jobSize = lead.job_size || 'not sure'
+    const timing = lead.timeline || 'not specified'
+    const providerName = n.providers?.business_name || n.providers?.contact_name || 'there'
+    const subject = `Clearout YYC beta lead — ${area} ${serviceType}`.trim()
     const text = [
-      'New Clearout YYC beta lead',
-      `Area: ${lead.community_or_postal || 'Calgary'} ${lead.area || ''}`.trim(),
-      `Type: ${lead.service_type || 'junk removal'}`,
-      `Size: ${lead.job_size || 'not sure'}`,
-      `Timing: ${lead.timeline || 'not specified'}`,
+      `Hi ${providerName},`,
+      '',
+      'A new Clearout YYC beta lead is available.',
+      '',
+      `Area: ${area}`,
+      `Type: ${serviceType}`,
+      `Size: ${jobSize}`,
+      `Timing: ${timing}`,
       '',
       `Claim beta access: ${n.claim_url}`,
       '',
       'Beta access is currently free. Customer contact details are shown only after a successful claim.',
       'Provider support is online only. No phone dispatch.',
     ].join('\n')
-    const html = `<h2>New Clearout YYC beta lead</h2><p><b>Area:</b> ${lead.community_or_postal || 'Calgary'} ${lead.area || ''}</p><p><b>Type:</b> ${lead.service_type || 'junk removal'}</p><p><b>Size:</b> ${lead.job_size || 'not sure'}</p><p><b>Timing:</b> ${lead.timeline || 'not specified'}</p><p><a href="${n.claim_url}">Claim beta access</a></p><p>Beta access is currently free. Customer contact details are shown only after a successful claim.</p><p>Provider support is online only. No phone dispatch.</p>`
+    const html = [
+      '<h2>New Clearout YYC beta lead</h2>',
+      `<p>Hi ${escapeHtml(providerName)},</p>`,
+      '<p>A new Clearout YYC beta lead is available.</p>',
+      `<p><b>Area:</b> ${escapeHtml(area)}</p>`,
+      `<p><b>Type:</b> ${escapeHtml(serviceType)}</p>`,
+      `<p><b>Size:</b> ${escapeHtml(jobSize)}</p>`,
+      `<p><b>Timing:</b> ${escapeHtml(timing)}</p>`,
+      `<p><a href="${escapeHtml(n.claim_url)}">Claim beta access</a></p>`,
+      '<p>Beta access is currently free. Customer contact details are shown only after a successful claim.</p>',
+      '<p>Provider support is online only. No phone dispatch.</p>',
+    ].join('')
 
     try {
       const r = await fetch('https://api.resend.com/emails', {

@@ -1,4 +1,6 @@
 import { assertAdmin, handleAdminError, supabaseAdminFetch } from './_lib/admin.js'
+import { supabaseRpc } from './_lib/supabase.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
 
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
@@ -86,12 +88,25 @@ async function leadAction(req: any, res: any) {
     return res.status(400).json({ error: 'Unknown action' })
   }
 
-  const updated = await supabaseAdminFetch(
+  const updated = await supabaseAdminFetch<any[]>(
     `leads?id=eq.${encodeURIComponent(leadId)}`,
     { method: 'PATCH', body: JSON.stringify(patch) }
   )
 
-  return res.status(200).json({ ok: true, lead: Array.isArray(updated) ? updated[0] : updated })
+  const lead = Array.isArray(updated) ? updated[0] : updated
+  let notificationRecords: any = { skipped: true }
+  let providerEmailSend: any = { skipped: true }
+
+  if (action === 'publish' && lead?.public_id) {
+    const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
+      p_lead_public_id: lead.public_id,
+      p_base_url: getClearoutBaseUrl(),
+    })
+    notificationRecords = { skipped: false, created: count }
+    providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
+  }
+
+  return res.status(200).json({ ok: true, lead, notificationRecords, providerEmailSend })
 }
 
 async function getClaims(res: any) {

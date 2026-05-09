@@ -1,5 +1,5 @@
 import { supabaseRpc, supabaseSelect } from '../_lib/supabase.js'
-import { sendPendingProviderEmails } from '../_lib/providerNotifications.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from '../_lib/providerNotifications.js'
 
 type LeadRow = { public_id: string }
 
@@ -22,12 +22,12 @@ export default async function handler(req: any, res: any) {
     for (const lead of published) {
       const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
         p_lead_public_id: lead.public_id,
-        p_base_url: 'https://clearout.aurorasitesolutions.com',
+        p_base_url: getClearoutBaseUrl(),
       })
       notificationRecords += Number(count || 0)
     }
 
-    const emailSend = await sendPendingProviderEmails(25)
+    const emailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
     return res.status(200).json({ ok: true, publishedCount, notificationRecords, emailSend })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'

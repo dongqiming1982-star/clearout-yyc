@@ -1,8 +1,8 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
-import { normalizeNorthAmericanPhone, normalizeOptionalEmail, normalizeOptionalEmail } from './_lib/validation.js'
+import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseRpc } from './_lib/supabase.js'
-import { sendPendingProviderEmails } from './_lib/providerNotifications.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
 
 function firstText(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value || '')
@@ -69,10 +69,10 @@ export default async function handler(req: any, res: any) {
       if (created?.accepted && created?.status === 'published' && created?.lead_public_id) {
         const count = await supabaseRpc<number>('create_provider_notifications_for_lead', {
           p_lead_public_id: created.lead_public_id,
-          p_base_url: 'https://clearout.aurorasitesolutions.com',
+          p_base_url: getClearoutBaseUrl(),
         })
         notificationRecords = { skipped: false, created: count }
-        providerEmailSend = await sendPendingProviderEmails(25)
+        providerEmailSend = await sendPendingProviderEmails(getProviderEmailBatchLimit())
       }
     }
 
