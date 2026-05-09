@@ -4,8 +4,8 @@ type NotificationRow = {
   id: string
   claim_url: string
   channel: 'email' | 'sms'
-  providers?: { email?: string; business_name?: string; contact_name?: string }
-  leads?: { community_or_postal?: string; area?: string; service_type?: string; job_size?: string; timeline?: string; notes?: string }
+  provider?: { email?: string; business_name?: string; contact_name?: string }
+  lead?: { community_or_postal?: string; area?: string; service_type?: string; job_size?: string; timeline?: string; notes?: string }
 }
 
 function escapeHtml(value: unknown) {
@@ -33,25 +33,25 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
   if (!apiKey) return { skipped: true, reason: 'RESEND_API_KEY is not configured', pending: 0, sent: 0, failed: 0 }
 
   const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 500))
-  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,providers(email,business_name,contact_name),leads(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&order=created_at.asc&limit=${safeLimit}`)
+  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,provider:providers!provider_notifications_provider_fk(email,business_name,contact_name),lead:leads!provider_notifications_lead_fk(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&order=created_at.asc&limit=${safeLimit}`)
   let sent = 0
   let failed = 0
   let skipped = 0
 
   for (const n of pending) {
-    const providerEmail = String(n.providers?.email || '').trim()
+    const providerEmail = String(n.provider?.email || '').trim()
     if (!providerEmail) {
       await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, { status: 'skipped', error_message: 'Provider email missing' })
       skipped += 1
       continue
     }
 
-    const lead = n.leads || {}
+    const lead = n.lead || {}
     const area = `${lead.community_or_postal || 'Calgary'} ${lead.area || ''}`.trim()
     const serviceType = lead.service_type || 'junk removal'
     const jobSize = lead.job_size || 'not sure'
     const timing = lead.timeline || 'not specified'
-    const providerName = n.providers?.business_name || n.providers?.contact_name || 'there'
+    const providerName = n.provider?.business_name || n.provider?.contact_name || 'there'
     const subject = `Clearout YYC beta lead — ${area} ${serviceType}`.trim()
     const text = [
       `Hi ${providerName},`,
