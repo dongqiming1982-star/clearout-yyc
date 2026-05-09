@@ -1810,10 +1810,21 @@ function ProviderPage({ lang }: { lang: Lang }) {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-200">{lang === 'zh' ? '服务商 Beta' : 'Provider beta'}</p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{lang === 'zh' ? '不用 App，直接接收 Calgary 清运线索。' : 'No app. Just Calgary junk removal lead alerts.'}</h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">{lang === 'zh' ? '加入免费 Beta 名单。选择你愿意服务的大区、车辆能力和清运类型；符合条件、已确认的需求可通过短信/邮件提醒你。' : 'Join the free beta list. Choose your service areas, vehicle capacity, and job types; matching confirmed requests can be sent by SMS/email.'}</p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#provider-form" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-semibold text-slate-950 hover:bg-red-50">{lang === 'zh' ? '加入免费 Beta' : 'Join free beta'}<ArrowRight size={18}/></a><button onClick={() => go('/faq')} className="rounded-full bg-white/10 px-7 py-4 font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">FAQ</button></div>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#provider-form" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-semibold text-slate-950 hover:bg-red-50">{lang === 'zh' ? '加入免费 Beta' : 'Join free beta'}<ArrowRight size={18}/></a><a href="/api/provider/unsubscribe" className="inline-flex items-center justify-center rounded-full bg-white/10 px-7 py-4 font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">{lang === 'zh' ? '管理邮件通知' : 'Manage email preferences'}</a><button onClick={() => go('/faq')} className="rounded-full bg-white/10 px-7 py-4 font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">FAQ</button></div>
         </div>
         <div className="grid gap-3">
           {cards.map(([title, body]) => <div key={title} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10"><b>{title}</b><p className="mt-2 text-sm leading-6 text-slate-300">{body}</p></div>)}
+        </div>
+      </div>
+    </section>
+    <section className="mx-auto max-w-6xl px-5 pb-2 sm:px-8 lg:px-10">
+      <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">{lang === 'zh' ? '已经申请过服务商？' : 'Already applied as a provider?'}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{lang === 'zh' ? '输入你的服务商邮箱，即可获取安全链接来开启、关闭或管理 Clearout YYC 线索邮件。' : 'Enter your provider email to receive a secure link for turning Clearout YYC lead emails on or off.'}</p>
+          </div>
+          <a href="/api/provider/unsubscribe" className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">{lang === 'zh' ? '管理邮件通知' : 'Manage email preferences'}</a>
         </div>
       </div>
     </section>
