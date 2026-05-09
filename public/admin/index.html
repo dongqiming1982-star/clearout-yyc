@@ -592,8 +592,13 @@ else showTab('providers')
   window.loadPlatformControls = async function () {
     const msg = document.getElementById('platformControlsMessage')
     try {
+      if (msg) msg.textContent = t('正在刷新总控…', 'Refreshing controls...')
       const data = await fetchPlatformSettings('GET')
       renderPlatformControls(data.settings || {})
+      if (msg) msg.textContent = t(
+        '总控已刷新。当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，派单通道 Email。',
+        'Controls refreshed. Recommended default: requests ON, dispatch ON, claiming ON, channel Email.'
+      )
     } catch (e) {
       const box = document.getElementById('platformControls')
       if (box) box.style.display = 'block'
