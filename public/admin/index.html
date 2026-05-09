@@ -64,6 +64,21 @@
     .dispatch-summary.mid { background: #fef3c7; color: #92400e; }
     .dispatch-summary.bad { background: #fee2e2; color: #991b1b; }
 
+
+    .dispatch-summary-fixed {
+      margin-top: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .dispatch-summary-fixed.ok { background: #dcfce7; color: #166534; }
+    .dispatch-summary-fixed.mid { background: #fef3c7; color: #92400e; }
+    .dispatch-summary-fixed.bad { background: #fee2e2; color: #991b1b; }
+
     @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
@@ -824,6 +839,165 @@ else showTab('providers')
   document.addEventListener('DOMContentLoaded', function () {
     setTimeout(function () { try { window.loadLeadDispatchBadges() } catch {} }, 1200)
   })
+})()
+</script>
+
+
+<script id="v272-dispatch-badge-force-fix">
+(function () {
+  const TARGET_RESOURCE = '/api/admin?resource=dispatch-status'
+
+  function getAdminToken() {
+    const input = document.getElementById('tokenInput')
+    const inputValue = (input && input.value || '').trim()
+    if (inputValue) return inputValue
+
+    const preferredKeys = [
+      'clearout_admin_token',
+      'clearoutAdminToken',
+      'admin_token',
+      'adminToken',
+      'ADMIN_TOKEN',
+      'clearout_admin'
+    ]
+
+    for (const key of preferredKeys) {
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value) return value
+    }
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || ''
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value && /admin/i.test(key) && /token/i.test(key)) return value
+    }
+
+    return ''
+  }
+
+  function buildBadge(info) {
+    if (!info || !Number(info.total || 0)) {
+      return { cls: 'bad', text: '派单：未派单' }
+    }
+
+    const email = Number(info.email || 0)
+    const sms = Number(info.sms || 0)
+    const total = Number(info.total || 0)
+    const sent = Number(info.sent || 0)
+    const pending = Number(info.pending || 0)
+    const failed = Number(info.failed || 0)
+    const skipped = Number(info.skipped || 0)
+
+    const channel =
+      sms > 0 && email === 0 ? 'sms' :
+      email > 0 && sms === 0 ? 'email' :
+      'mixed'
+
+    const parts = ['派单：' + channel, 'total ' + total]
+
+    if (sent) parts.push('sent ' + sent)
+    if (pending) parts.push('pending ' + pending)
+    if (failed) parts.push('failed ' + failed)
+    if (skipped) parts.push('skipped ' + skipped)
+
+    let cls = 'ok'
+    if (failed) cls = 'bad'
+    else if (pending || skipped) cls = 'mid'
+
+    return { cls, text: parts.join(' · ') }
+  }
+
+  function findLeadIdFromCell(cell) {
+    const text = (cell.textContent || '').replace(/\s+/g, ' ')
+    const match = text.match(/lead_[A-Za-z0-9]+/)
+    return match ? match[0] : ''
+  }
+
+  function annotate(dispatchStatus) {
+    const cells = Array.from(document.querySelectorAll('td'))
+
+    for (const cell of cells) {
+      const publicId = findLeadIdFromCell(cell)
+      if (!publicId) continue
+
+      const info = dispatchStatus[publicId]
+      const badge = buildBadge(info)
+
+      // Remove old badges from previous scripts.
+      const oldBadges = cell.querySelectorAll('.dispatch-summary, .dispatch-summary-fixed')
+      oldBadges.forEach((el, index) => {
+        if (index > 0) el.remove()
+      })
+
+      let el = cell.querySelector('.dispatch-summary-fixed') || cell.querySelector('.dispatch-summary')
+      if (!el) {
+        el = document.createElement('div')
+        cell.appendChild(el)
+      }
+
+      el.className = 'dispatch-summary-fixed ' + badge.cls
+      el.textContent = badge.text
+      el.setAttribute('data-public-id', publicId)
+    }
+  }
+
+  async function loadAndAnnotate() {
+    const token = getAdminToken()
+    if (!token) return
+
+    const response = await fetch(TARGET_RESOURCE + '&_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'x-admin-token': token }
+    })
+
+    if (!response.ok) return
+
+    const data = await response.json()
+    if (!data || !data.ok) return
+
+    annotate(data.dispatch_status || {})
+  }
+
+  function schedule() {
+    setTimeout(loadAndAnnotate, 100)
+    setTimeout(loadAndAnnotate, 500)
+    setTimeout(loadAndAnnotate, 1200)
+    setTimeout(loadAndAnnotate, 2500)
+  }
+
+  window.forceRefreshDispatchBadges = schedule
+
+  const oldLoadAll = window.loadAll
+  if (typeof oldLoadAll === 'function') {
+    window.loadAll = async function () {
+      const result = await oldLoadAll.apply(this, arguments)
+      schedule()
+      return result
+    }
+  }
+
+  const oldShowTab = window.showTab
+  if (typeof oldShowTab === 'function') {
+    window.showTab = function (tab) {
+      const result = oldShowTab.apply(this, arguments)
+      schedule()
+      return result
+    }
+  }
+
+  const observer = new MutationObserver(function () {
+    clearTimeout(window.__dispatchBadgeRefreshTimer)
+    window.__dispatchBadgeRefreshTimer = setTimeout(loadAndAnnotate, 300)
+  })
+
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      observer.observe(document.body, { childList: true, subtree: true })
+    } catch {}
+    schedule()
+  })
+
+  schedule()
 })()
 </script>
 
