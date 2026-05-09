@@ -1070,5 +1070,243 @@ else showTab('providers')
 })()
 </script>
 
+
+<script id="v272-admin-i18n-cleanup">
+(function () {
+  const EN_TO_ZH = {
+    'Clearout YYC Admin': 'Clearout YYC 后台',
+    'Internal provider, lead, and claim management. Do not share your admin token.': '内部服务商、客户需求和认领管理。不要分享后台 Token。',
+    'Admin token': '后台 Token',
+    'Enter Admin': '进入后台',
+    'Clear': '清除',
+    "Token is stored only in this browser's localStorage.": 'Token 只保存在当前浏览器的 localStorage。',
+
+    'Providers': '服务商',
+    'Leads': '客户需求',
+    'Claims': '认领',
+    'Refresh': '刷新',
+
+    'Platform controls': '平台总控',
+    'Control customer submissions, dispatch, claims, and dispatch channel.': '控制客户提交、系统派单、服务商接单和派单通道。',
+    'Refresh controls': '刷新总控',
+    'Dispatch pending leads': '派出积压需求',
+
+    'Customer requests': '客户提交',
+    'Lead dispatch': '系统派单',
+    'Provider claiming': '服务商接单',
+    'Dispatch channel': '派单通道',
+
+    'When paused, customers cannot submit new requests.': '关闭后，客户不能提交新的清运需求。',
+    'When paused, leads can enter admin but will not be sent to providers.': '关闭后，客户需求仍可进入后台，但不会发送给服务商。',
+    'When paused, providers cannot unlock customer contact details.': '关闭后，服务商不能领取客户联系方式。',
+    'Controls whether new dispatches use Email or SMS.': '控制新派单使用 Email 还是 SMS。',
+
+    'Pause requests': '暂停提交',
+    'Enable requests': '允许提交',
+    'Pause dispatch': '暂停派单',
+    'Enable dispatch': '允许派单',
+    'Pause claiming': '暂停接单',
+    'Enable claiming': '允许接单',
+
+    'Dispatch queue overview / 派单队列总览': '派单队列总览',
+    'Loading dispatch queue...': '正在加载派单队列...',
+    'Pending dispatch complete:': '积压派单完成：',
+
+    'Providers total': '服务商总数',
+    'Pending providers': '待审核服务商',
+    'Leads total': '客户需求总数',
+    'Claims total': '认领总数',
+    'Today': '今日',
+    'This month': '本月',
+    'Today new': '今日新增',
+    'Month new': '本月新增',
+
+    'Business': '商家',
+    'Provider': '服务商',
+    'Contact': '联系人',
+    'Phone': '电话',
+    'Status': '状态',
+    'Notify': '通知',
+    'Lifecycle Email': '生命周期邮件',
+    'Actions': '操作',
+    'Customer': '客户',
+    'Request': '需求',
+    'Area': '区域',
+    'Service': '服务',
+    'Timeline': '时间',
+    'Created': '创建时间',
+    'Lead': '客户需求',
+    'Access': '认领类型',
+    'Claim': '认领',
+
+    'Approve': '批准',
+    'Suspend': '暂停',
+    'Activate': '启用',
+    'Deactivate': '停用',
+    'Publish': '发布',
+    'Expire': '过期',
+    'Queue': '排队',
+
+    'approved': '已批准',
+    'submitted': '已提交',
+    'active': '启用',
+    'inactive': '停用',
+    'published': '已发布',
+    'queued': '排队',
+    'expired': '已过期',
+    'shared_active': '共享中',
+    'exclusive_claimed': '独家已认领',
+    'pending': '待处理',
+    'sent': '已发送',
+    'failed': '失败',
+    'skipped': '已跳过',
+
+    'not created': '未创建',
+    'total': '总数',
+    'sent': '已发送',
+    'failed': '失败',
+    'skipped': '跳过'
+  }
+
+  const ZH_TO_EN = Object.fromEntries(
+    Object.entries(EN_TO_ZH).map(([en, zh]) => [zh, en])
+  )
+
+  function isZh() {
+    return document.getElementById('lang-zh')?.classList.contains('active')
+  }
+
+  function translateDispatchText(text, zh) {
+    let out = String(text || '')
+
+    if (zh) {
+      out = out
+        .replace(/^Dispatch:\s*/i, '派单：')
+        .replace(/\bnot created\b/g, '未创建')
+        .replace(/\btotal\b/g, '总数')
+        .replace(/\bsent\b/g, '已发送')
+        .replace(/\bpending\b/g, '待发送')
+        .replace(/\bfailed\b/g, '失败')
+        .replace(/\bskipped\b/g, '跳过')
+    } else {
+      out = out
+        .replace(/^派单：/, 'Dispatch: ')
+        .replace(/未创建/g, 'not created')
+        .replace(/总数/g, 'total')
+        .replace(/已发送/g, 'sent')
+        .replace(/待发送/g, 'pending')
+        .replace(/失败/g, 'failed')
+        .replace(/跳过/g, 'skipped')
+    }
+
+    return out
+  }
+
+  function translateTextNode(node, zh) {
+    const raw = node.nodeValue || ''
+    const trimmed = raw.trim()
+    if (!trimmed) return
+
+    const map = zh ? EN_TO_ZH : ZH_TO_EN
+
+    if (trimmed.startsWith('Dispatch:') || trimmed.startsWith('派单：')) {
+      node.nodeValue = raw.replace(trimmed, translateDispatchText(trimmed, zh))
+      return
+    }
+
+    if (map[trimmed]) {
+      node.nodeValue = raw.replace(trimmed, map[trimmed])
+    }
+  }
+
+  function translateDom(root) {
+    const zh = isZh()
+
+    const tokenInput = document.getElementById('tokenInput')
+    if (tokenInput) {
+      tokenInput.setAttribute('placeholder', zh ? '输入 ADMIN_TOKEN' : 'Enter ADMIN_TOKEN')
+    }
+
+    const walker = document.createTreeWalker(
+      root || document.body,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          const parent = node.parentElement
+          if (!parent) return NodeFilter.FILTER_REJECT
+
+          const tag = parent.tagName
+          if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION'].includes(tag)) {
+            return NodeFilter.FILTER_REJECT
+          }
+
+          return NodeFilter.FILTER_ACCEPT
+        }
+      }
+    )
+
+    const nodes = []
+    while (walker.nextNode()) nodes.push(walker.currentNode)
+    nodes.forEach(node => translateTextNode(node, zh))
+
+    document.querySelectorAll('.dispatch-native, .dispatch-summary, .dispatch-summary-fixed').forEach(el => {
+      el.textContent = translateDispatchText(el.textContent || '', zh)
+    })
+  }
+
+  window.applyAdminI18nCleanup = function () {
+    translateDom(document.body)
+  }
+
+  function scheduleI18n() {
+    setTimeout(window.applyAdminI18nCleanup, 50)
+    setTimeout(window.applyAdminI18nCleanup, 300)
+    setTimeout(window.applyAdminI18nCleanup, 900)
+    setTimeout(window.applyAdminI18nCleanup, 1800)
+  }
+
+  const oldSetLang = window.setLang
+  if (typeof oldSetLang === 'function') {
+    window.setLang = function () {
+      const result = oldSetLang.apply(this, arguments)
+      scheduleI18n()
+      return result
+    }
+  }
+
+  const oldLoadAll = window.loadAll
+  if (typeof oldLoadAll === 'function') {
+    window.loadAll = async function () {
+      const result = await oldLoadAll.apply(this, arguments)
+      scheduleI18n()
+      return result
+    }
+  }
+
+  const oldShowTab = window.showTab
+  if (typeof oldShowTab === 'function') {
+    window.showTab = function () {
+      const result = oldShowTab.apply(this, arguments)
+      scheduleI18n()
+      return result
+    }
+  }
+
+  const observer = new MutationObserver(function () {
+    clearTimeout(window.__adminI18nCleanupTimer)
+    window.__adminI18nCleanupTimer = setTimeout(window.applyAdminI18nCleanup, 120)
+  })
+
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      observer.observe(document.body, { childList: true, subtree: true })
+    } catch {}
+    scheduleI18n()
+  })
+
+  scheduleI18n()
+})()
+</script>
+
 </body>
 </html>
