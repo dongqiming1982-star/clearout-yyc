@@ -42,6 +42,22 @@
     .error { color: #991b1b; font-weight: 700; }
     .muted { color: #64748b; }
     .scroll { overflow-x: auto; }
+
+    .platform-controls { margin-top: 14px; }
+    .control-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .control-card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 14px; background: #fff; }
+    .control-card h3 { margin: 0; font-size: 15px; }
+    .control-card p { margin: 8px 0 12px; color: #64748b; font-size: 12px; line-height: 1.5; }
+    .control-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .control-status { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 800; }
+    .control-status.on { background: #dcfce7; color: #166534; }
+    .control-status.off { background: #fee2e2; color: #991b1b; }
+    .control-status.sms { background: #fee2e2; color: #991b1b; }
+    .control-status.email { background: #dcfce7; color: #166534; }
+    .control-note { margin-top: 12px; font-size: 13px; color: #64748b; }
+    @media (max-width: 980px) { .control-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .control-grid { grid-template-columns: 1fr; } }
+
     @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
@@ -72,6 +88,19 @@
 
   <section id="app" style="display:none">
     <div class="grid stats" id="stats"></div>
+
+    <section class="card platform-controls" id="platformControls" style="display:none">
+      <div class="top">
+        <div>
+          <h2 id="platformControlsTitle" style="margin:0;font-size:20px">Platform controls</h2>
+          <div class="sub" id="platformControlsSub">Control customer submissions, dispatch, claims, and dispatch channel.</div>
+        </div>
+        <button class="secondary" onclick="loadPlatformControls()" id="platformControlsRefresh">Refresh controls</button>
+      </div>
+      <div class="control-grid" id="platformControlsGrid" style="margin-top:14px"></div>
+      <div class="control-note" id="platformControlsMessage"></div>
+    </section>
+
 
     <div class="tabs">
       <button id="tab-providers" onclick="showTab('providers')">Providers</button>
@@ -419,5 +448,191 @@ applyLang()
 if (token) loadAll()
 else showTab('providers')
 </script>
+
+<script>
+(function () {
+  function getAdminTokenForPlatformControls() {
+    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
+    if (inputValue) return inputValue
+
+    const candidates = [
+      'clearout_admin_token',
+      'clearoutAdminToken',
+      'admin_token',
+      'adminToken',
+      'ADMIN_TOKEN',
+      'clearout_admin'
+    ]
+
+    for (const key of candidates) {
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value) return value
+    }
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || ''
+      if (/admin/i.test(key) && /token/i.test(key)) {
+        const value = (localStorage.getItem(key) || '').trim()
+        if (value) return value
+      }
+    }
+
+    return ''
+  }
+
+  function getAdminLangForPlatformControls() {
+    return document.getElementById('lang-zh')?.classList.contains('active') ? 'zh' : 'en'
+  }
+
+  function t(zh, en) {
+    return getAdminLangForPlatformControls() === 'zh' ? zh : en
+  }
+
+  async function fetchPlatformSettings(method, body) {
+    const token = getAdminTokenForPlatformControls()
+    if (!token) throw new Error('Missing ADMIN_TOKEN.')
+
+    const url = '/api/admin?resource=settings' + (method === 'POST' ? '&action=update' : '')
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': token
+      },
+      body: body ? JSON.stringify(body) : undefined
+    })
+
+    const text = await response.text()
+    let data = null
+    try { data = text ? JSON.parse(text) : null } catch { data = text }
+
+    if (!response.ok) {
+      throw new Error((data && data.error) || text || 'Failed to load platform settings.')
+    }
+
+    return data
+  }
+
+  function controlButton(label, onclick, active) {
+    return '<button class="' + (active ? '' : 'secondary') + '" onclick="' + onclick + '">' + label + '</button>'
+  }
+
+  function statusPill(value, kind) {
+    const cls = value === true ? 'on' : value === false ? 'off' : kind
+    const text = value === true ? 'ON' : value === false ? 'OFF' : String(value || '').toUpperCase()
+    return '<span class="control-status ' + cls + '">' + text + '</span>'
+  }
+
+  function renderPlatformControls(settings) {
+    const box = document.getElementById('platformControls')
+    const grid = document.getElementById('platformControlsGrid')
+    const msg = document.getElementById('platformControlsMessage')
+    const title = document.getElementById('platformControlsTitle')
+    const sub = document.getElementById('platformControlsSub')
+    const refresh = document.getElementById('platformControlsRefresh')
+
+    if (!box || !grid) return
+
+    box.style.display = 'block'
+    title.textContent = t('平台总控', 'Platform controls')
+    sub.textContent = t('控制客户提交、系统派单、服务商接单，以及 Email / SMS 派单通道。', 'Control customer submissions, dispatch, claims, and Email / SMS dispatch channel.')
+    refresh.textContent = t('刷新总控', 'Refresh controls')
+
+    const customerOn = !!settings.customer_requests_enabled
+    const dispatchOn = !!settings.lead_dispatch_enabled
+    const claimsOn = !!settings.provider_claims_enabled
+    const channel = settings.lead_dispatch_channel === 'sms' ? 'sms' : 'email'
+
+    grid.innerHTML = [
+      {
+        title: t('客户提交', 'Customer requests'),
+        desc: t('关闭后，客户不能提交新的清运需求。', 'When paused, customers cannot submit new requests.'),
+        status: statusPill(customerOn),
+        buttons: controlButton(customerOn ? t('暂停提交', 'Pause requests') : t('允许提交', 'Enable requests'), "updatePlatformControl('customer_requests_enabled'," + (!customerOn) + ")", customerOn)
+      },
+      {
+        title: t('系统派单', 'Lead dispatch'),
+        desc: t('关闭后，客户需求仍可进入后台，但不会发给服务商。', 'When paused, leads can enter admin but will not be sent to providers.'),
+        status: statusPill(dispatchOn),
+        buttons: controlButton(dispatchOn ? t('暂停派单', 'Pause dispatch') : t('允许派单', 'Enable dispatch'), "updatePlatformControl('lead_dispatch_enabled'," + (!dispatchOn) + ")", dispatchOn)
+      },
+      {
+        title: t('服务商接单', 'Provider claiming'),
+        desc: t('关闭后，服务商不能领取客户联系方式。', 'When paused, providers cannot unlock customer contact details.'),
+        status: statusPill(claimsOn),
+        buttons: controlButton(claimsOn ? t('暂停接单', 'Pause claiming') : t('允许接单', 'Enable claiming'), "updatePlatformControl('provider_claims_enabled'," + (!claimsOn) + ")", claimsOn)
+      },
+      {
+        title: t('派单通道', 'Dispatch channel'),
+        desc: t('控制新派单使用 Email 还是 SMS。', 'Controls whether new dispatches use Email or SMS.'),
+        status: statusPill(channel, channel),
+        buttons:
+          controlButton('Email', "updatePlatformControl('lead_dispatch_channel','email')", channel === 'email') +
+          controlButton('SMS', "updatePlatformControl('lead_dispatch_channel','sms')", channel === 'sms')
+      }
+    ].map(item => (
+      '<div class="control-card">' +
+        '<div class="control-row" style="justify-content:space-between">' +
+          '<h3>' + item.title + '</h3>' +
+          item.status +
+        '</div>' +
+        '<p>' + item.desc + '</p>' +
+        '<div class="control-row">' + item.buttons + '</div>' +
+      '</div>'
+    )).join('')
+
+    if (msg) msg.textContent = t('当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，派单通道 Email。', 'Recommended default: requests ON, dispatch ON, claiming ON, channel Email.')
+  }
+
+  window.loadPlatformControls = async function () {
+    const msg = document.getElementById('platformControlsMessage')
+    try {
+      const data = await fetchPlatformSettings('GET')
+      renderPlatformControls(data.settings || {})
+    } catch (e) {
+      const box = document.getElementById('platformControls')
+      if (box) box.style.display = 'block'
+      if (msg) msg.textContent = e instanceof Error ? e.message : 'Failed to load platform controls.'
+    }
+  }
+
+  window.updatePlatformControl = async function (key, value) {
+    const msg = document.getElementById('platformControlsMessage')
+    try {
+      if (msg) msg.textContent = t('正在保存…', 'Saving...')
+      const data = await fetchPlatformSettings('POST', { key, value })
+      renderPlatformControls(data.settings || {})
+      if (msg) msg.textContent = t('设置已更新。', 'Settings updated.')
+    } catch (e) {
+      if (msg) msg.textContent = e instanceof Error ? e.message : 'Failed to update setting.'
+    }
+  }
+
+  const previousLoadAll = window.loadAll
+  if (typeof previousLoadAll === 'function') {
+    window.loadAll = async function () {
+      const result = await previousLoadAll.apply(this, arguments)
+      try { await window.loadPlatformControls() } catch {}
+      return result
+    }
+  }
+
+  const previousSetLang = window.setLang
+  if (typeof previousSetLang === 'function') {
+    window.setLang = function (lang) {
+      const result = previousSetLang.apply(this, arguments)
+      try { window.loadPlatformControls() } catch {}
+      return result
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      try { window.loadPlatformControls() } catch {}
+    }, 500)
+  })
+})()
+</script>
+
 </body>
 </html>
