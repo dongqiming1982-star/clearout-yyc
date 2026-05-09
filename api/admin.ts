@@ -1,6 +1,6 @@
 import { assertAdmin, handleAdminError, supabaseAdminFetch } from './_lib/admin.js'
 import { supabaseRpc } from './_lib/supabase.js'
-import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'\nimport { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
 
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
@@ -31,7 +31,7 @@ async function getSummary(res: any) {
 
 async function getProviders(res: any) {
   const providers = await supabaseAdminFetch(
-    'providers?select=id,public_id,business_name,contact_name,email,phone,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
+    'providers?select=id,public_id,business_name,contact_name,email,phone,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,application_email_sent_at,approval_email_sent_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
   )
   return res.status(200).json({ ok: true, providers })
 }
@@ -43,8 +43,15 @@ async function providerAction(req: any, res: any) {
   if (!providerId) return res.status(400).json({ error: 'Missing provider_id' })
 
   let patch: any = {}
+  let providerBefore: any = null
 
-  if (action === 'approve') patch = { approved: true, active: true }
+  if (action === 'approve') {
+    const beforeRows = await supabaseAdminFetch<any[]>(
+      `providers?select=id,business_name,contact_name,email,provider_token,approved,approval_email_sent_at&id=eq.${encodeURIComponent(providerId)}&limit=1`
+    )
+    providerBefore = Array.isArray(beforeRows) ? beforeRows[0] : null
+    patch = { approved: true, active: true }
+  }
   else if (action === 'suspend') patch = { active: false }
   else if (action === 'activate') patch = { active: true }
   else if (action === 'deactivate') patch = { active: false }
@@ -55,7 +62,19 @@ async function providerAction(req: any, res: any) {
     { method: 'PATCH', body: JSON.stringify(patch) }
   )
 
-  return res.status(200).json({ ok: true, provider: Array.isArray(updated) ? updated[0] : updated })
+  const provider = Array.isArray(updated) ? updated[0] : updated
+  let providerLifecycleEmail: any = { skipped: true }
+
+  if (
+    action === 'approve' &&
+    providerBefore &&
+    providerBefore.approved !== true &&
+    !providerBefore.approval_email_sent_at
+  ) {
+    providerLifecycleEmail = await sendProviderApprovalEmail({ ...providerBefore, ...(provider || {}) })
+  }
+
+  return res.status(200).json({ ok: true, provider, providerLifecycleEmail })
 }
 
 async function getLeads(res: any) {

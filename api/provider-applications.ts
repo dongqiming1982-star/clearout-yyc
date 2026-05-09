@@ -1,7 +1,7 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.js'
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
-import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'
+import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'\nimport { sendProviderApplicationReceivedEmail } from './_lib/providerLifecycleEmails.js'
 
 function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []
@@ -41,7 +41,7 @@ export default async function handler(req: any, res: any) {
     application.email = normalizedProviderEmail
 
     const row = flatProviderApplication(application, String(source_url || req.headers?.referer || ''))
-    let supabase: any = { skipped: true }
+    let supabase: any = { skipped: true }\n    let providerLifecycleEmail: any = { skipped: true }
 
     if (hasSupabaseConfig()) {
       const providerEmail = String(application.email || '').trim().toLowerCase()
@@ -79,7 +79,9 @@ export default async function handler(req: any, res: any) {
         daily_claim_limit: Number(application.daily_lead_limit || 20),
         notes: JSON.stringify({ source_url, application }),
       })
-      supabase = { skipped: false, provider: inserted?.[0] || null }
+      const provider = inserted?.[0] || null
+      supabase = { skipped: false, provider }
+      if (provider) providerLifecycleEmail = await sendProviderApplicationReceivedEmail(provider)
     }
 
     const sheet = await appendToGoogleSheet('provider_application', row, application)
@@ -90,7 +92,7 @@ export default async function handler(req: any, res: any) {
       ? 'No SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY, GOOGLE_SHEETS_WEBHOOK_URL, or RESEND_API_KEY/LEAD_NOTIFY_TO configured. The API accepted the form but did not store/send it anywhere.'
       : ''
 
-    return res.status(200).json({ ok: true, application_id: row.application_id, supabase, sheet, email, warning })
+    return res.status(200).json({ ok: true, application_id: row.application_id, supabase, sheet, email, providerLifecycleEmail, warning })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
 
