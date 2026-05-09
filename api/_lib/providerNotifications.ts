@@ -17,6 +17,33 @@ function escapeHtml(value: unknown) {
     .replaceAll("'", '&#039;')
 }
 
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function sendResendEmail(apiKey: string, payload: Record<string, unknown>) {
+  const sendOnce = async () => fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  const first = await sendOnce()
+  if (first.ok) return
+
+  const firstMessage = await first.text()
+  const rateLimited = first.status === 429 || firstMessage.includes('rate_limit_exceeded')
+
+  if (rateLimited) {
+    await sleep(1500)
+    const retry = await sendOnce()
+    if (retry.ok) return
+    throw new Error(await retry.text())
+  }
+
+  throw new Error(firstMessage)
+}
+
 export function getClearoutBaseUrl() {
   return String(process.env.CLEAROUT_BASE_URL || 'https://clearout.aurorasitesolutions.com').replace(/\/+$/, '')
 }
@@ -82,12 +109,8 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
     ].join('')
 
     try {
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to: [providerEmail], subject, html, text }),
-      })
-      if (!r.ok) throw new Error(await r.text())
+      await sleep(250)
+      await sendResendEmail(apiKey, { from, to: [providerEmail], subject, html, text })
       await supabasePatch('provider_notifications', `id=eq.${encodeURIComponent(n.id)}`, { status: 'sent', sent_at: new Date().toISOString(), error_message: null })
       sent += 1
     } catch (err) {
