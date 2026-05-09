@@ -1,7 +1,8 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.js'
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
-import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'\nimport { sendProviderApplicationReceivedEmail } from './_lib/providerLifecycleEmails.js'
+import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'
+import { sendProviderApplicationReceivedEmail } from './_lib/providerLifecycleEmails.js'
 
 function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []
@@ -41,7 +42,8 @@ export default async function handler(req: any, res: any) {
     application.email = normalizedProviderEmail
 
     const row = flatProviderApplication(application, String(source_url || req.headers?.referer || ''))
-    let supabase: any = { skipped: true }\n    let providerLifecycleEmail: any = { skipped: true }
+    let supabase: any = { skipped: true }
+    let providerLifecycleEmail: any = { skipped: true }
 
     if (hasSupabaseConfig()) {
       const providerEmail = String(application.email || '').trim().toLowerCase()

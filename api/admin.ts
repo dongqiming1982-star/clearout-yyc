@@ -1,6 +1,7 @@
 import { assertAdmin, handleAdminError, supabaseAdminFetch } from './_lib/admin.js'
 import { supabaseRpc } from './_lib/supabase.js'
-import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'\nimport { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
+import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails } from './_lib/providerNotifications.js'
+import { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
 
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
