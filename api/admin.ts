@@ -13,7 +13,7 @@ async function getSummary(res: any) {
   const leads: any[] = await supabaseAdminFetch('leads?select=id,status,created_at&limit=1000')
   const claims: any[] = await supabaseAdminFetch('lead_claims?select=id,access,status,created_at&limit=1000')
 
-  function calgaryParts(value: any) {
+  function calgaryDateParts(value: any) {
     const d = value ? new Date(value) : new Date()
     if (Number.isNaN(d.getTime())) return { ymd: '', ym: '' }
 
@@ -34,15 +34,16 @@ async function getSummary(res: any) {
     }
   }
 
-  const today = calgaryParts(new Date()).ymd
-  const month = calgaryParts(new Date()).ym
+  const nowParts = calgaryDateParts(new Date())
+  const today = nowParts.ymd
+  const thisMonth = nowParts.ym
 
   function isToday(row: any) {
-    return calgaryParts(row?.created_at).ymd === today
+    return calgaryDateParts(row?.created_at).ymd === today
   }
 
   function isThisMonth(row: any) {
-    return calgaryParts(row?.created_at).ym === month
+    return calgaryDateParts(row?.created_at).ym === thisMonth
   }
 
   const leadStatus: Record<string, number> = {}
@@ -75,7 +76,6 @@ async function getSummary(res: any) {
     },
   })
 }
-
 async function getProviders(res: any) {
   const providers = await supabaseAdminFetch(
     'providers?select=id,public_id,business_name,contact_name,email,phone,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,application_email_sent_at,approval_email_sent_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
