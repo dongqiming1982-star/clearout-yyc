@@ -103,7 +103,7 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
       'Clearout YYC is operated by Aurora Site Solutions.',
       'Calgary, Alberta, Canada',
       'Contact: contact@aurorasitesolutions.com',
-      `Unsubscribe from provider lead emails: ${unsubscribeUrl}`,
+      `Manage or unsubscribe from provider lead emails: ${unsubscribeUrl}`,
       '',
       'Provider support is online only. No phone dispatch.',
     ].join('\n')
@@ -120,7 +120,7 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
       '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />',
       '<p style="font-size:12px;color:#64748b">You are receiving this email because you applied as a Clearout YYC provider.</p>',
       '<p style="font-size:12px;color:#64748b">Clearout YYC is operated by Aurora Site Solutions.<br/>Calgary, Alberta, Canada<br/>Contact: contact@aurorasitesolutions.com</p>',
-      `<p style="font-size:12px;color:#64748b"><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from provider lead emails</a></p>`,
+      `<p style="font-size:12px;color:#64748b"><a href="${escapeHtml(unsubscribeUrl)}">Manage or unsubscribe from provider lead emails</a></p>`,
       '<p style="font-size:12px;color:#64748b">Provider support is online only. No phone dispatch.</p>',
     ].join('')
 
