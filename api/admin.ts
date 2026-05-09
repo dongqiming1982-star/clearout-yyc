@@ -197,6 +197,72 @@ async function dispatchPendingLeadsAction(req: any, res: any) {
   })
 }
 
+
+async function getDispatchStatus(res: any) {
+  const leads: any[] = await supabaseAdminFetch(
+    'leads?select=id,public_id&order=created_at.desc&limit=1000'
+  )
+
+  const notifications: any[] = await supabaseAdminFetch(
+    'provider_notifications?select=id,lead_id,channel,status,sent_at,error_message,created_at&order=created_at.desc&limit=5000'
+  )
+
+  const byLeadId: Record<string, any> = {}
+
+  for (const lead of leads) {
+    byLeadId[lead.id] = {
+      lead_id: lead.id,
+      public_id: lead.public_id,
+      total: 0,
+      email: 0,
+      sms: 0,
+      pending: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      last_channel: null,
+      last_status: null,
+      last_sent_at: null,
+      last_error_message: null,
+    }
+  }
+
+  for (const row of notifications) {
+    const item = byLeadId[row.lead_id]
+    if (!item) continue
+
+    const channel = String(row.channel || '')
+    const status = String(row.status || '')
+
+    item.total += 1
+    if (channel === 'email') item.email += 1
+    if (channel === 'sms') item.sms += 1
+
+    if (status === 'pending') item.pending += 1
+    if (status === 'sent') item.sent += 1
+    if (status === 'failed') item.failed += 1
+    if (status === 'skipped') item.skipped += 1
+
+    if (!item.last_status) {
+      item.last_channel = channel || null
+      item.last_status = status || null
+      item.last_sent_at = row.sent_at || null
+      item.last_error_message = row.error_message || null
+    }
+  }
+
+  const dispatchStatus: Record<string, any> = {}
+
+  for (const item of Object.values(byLeadId)) {
+    dispatchStatus[(item as any).public_id] = item
+  }
+
+  return res.status(200).json({
+    ok: true,
+    dispatch_status: dispatchStatus,
+  })
+}
+
 export default async function handler(req: any, res: any) {
   try {
     assertAdmin(req)
@@ -210,6 +276,7 @@ export default async function handler(req: any, res: any) {
       if (resource === 'leads') return getLeads(res)
       if (resource === 'claims') return getClaims(res)
       if (resource === 'settings') return getSettings(res)
+      if (resource === 'dispatch-status') return getDispatchStatus(res)
       return res.status(400).json({ error: 'Unknown admin resource' })
     }
 
