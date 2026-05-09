@@ -116,6 +116,9 @@ const text = {
     contact: 'Contact',
     email: 'Email',
     phone: 'Phone',
+    emailNotifications: 'Email notifications',
+    subscribed: 'Subscribed',
+    unsubscribed: 'Unsubscribed',
     status: 'Status',
     created: 'Created',
     actions: 'Actions',
@@ -170,6 +173,9 @@ const text = {
     contact: '联系人',
     email: '邮箱',
     phone: '电话',
+    emailNotifications: '邮件通知',
+    subscribed: '已订阅',
+    unsubscribed: '已退订',
     status: '状态',
     created: '创建时间',
     actions: '操作',
@@ -318,7 +324,7 @@ async function loadProviders() {
   document.getElementById('providersPanel').innerHTML = `
     <h2>${t('providers')}</h2>
     <div class="scroll"><table>
-      <thead><tr><th>${t('business')}</th><th>${t('contact')}</th><th>${t('email')}</th><th>${t('phone')}</th><th>${t('status')}</th><th>${t('created')}</th><th>${t('actions')}</th></tr></thead>
+      <thead><tr><th>${t('business')}</th><th>${t('contact')}</th><th>${t('email')}</th><th>${t('phone')}</th><th>${t('emailNotifications')}</th><th>${t('status')}</th><th>${t('created')}</th><th>${t('actions')}</th></tr></thead>
       <tbody>
       ${providers.map(p => `
         <tr>
@@ -326,6 +332,10 @@ async function loadProviders() {
           <td>${esc(p.contact_name)}</td>
           <td>${esc(p.email)}</td>
           <td>${esc(p.phone)}</td>
+          <td>
+            ${p.notify_by_email === false ? badge(t('unsubscribed'),'bad') : badge(t('subscribed'),'ok')}
+            ${p.email_unsubscribed_at ? `<br><span class="muted">${esc(new Date(p.email_unsubscribed_at).toLocaleString())}</span>` : ''}
+          </td>
           <td>
             ${p.approved ? badge(t('approved'),'ok') : badge(t('pending'),'mid')}
             ${p.active ? badge(t('active'),'ok') : badge(t('inactive'),'bad')}

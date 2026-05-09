@@ -4,7 +4,7 @@ type NotificationRow = {
   id: string
   claim_url: string
   channel: 'email' | 'sms'
-  provider?: { email?: string; business_name?: string; contact_name?: string }
+  provider?: { id?: string; provider_token?: string; email?: string; business_name?: string; contact_name?: string }
   lead?: { community_or_postal?: string; area?: string; service_type?: string; job_size?: string; timeline?: string; notes?: string }
 }
 
@@ -60,7 +60,7 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
   if (!apiKey) return { skipped: true, reason: 'RESEND_API_KEY is not configured', pending: 0, sent: 0, failed: 0 }
 
   const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 500))
-  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,provider:providers!provider_notifications_provider_fk(email,business_name,contact_name),lead:leads!provider_notifications_lead_fk(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&order=created_at.asc&limit=${safeLimit}`)
+  const pending = await supabaseSelect<NotificationRow>(`provider_notifications?select=id,claim_url,channel,provider:providers!provider_notifications_provider_fk(id,provider_token,email,business_name,contact_name),lead:leads!provider_notifications_lead_fk(community_or_postal,area,service_type,job_size,timeline,notes)&status=eq.pending&channel=eq.email&order=created_at.asc&limit=${safeLimit}`)
   let sent = 0
   let failed = 0
   let skipped = 0
@@ -79,6 +79,11 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
     const jobSize = lead.job_size || 'not sure'
     const timing = lead.timeline || 'not specified'
     const providerName = n.provider?.business_name || n.provider?.contact_name || 'there'
+    const providerId = String(n.provider?.id || '')
+    const providerToken = String(n.provider?.provider_token || '')
+    const unsubscribeUrl = providerId && providerToken
+      ? `${getClearoutBaseUrl()}/api/provider/unsubscribe?provider=${encodeURIComponent(providerId)}&token=${encodeURIComponent(providerToken)}`
+      : `${getClearoutBaseUrl()}/provider`
     const subject = `Clearout YYC beta lead — ${area} ${serviceType}`.trim()
     const text = [
       `Hi ${providerName},`,
@@ -93,6 +98,13 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
       `Claim beta access: ${n.claim_url}`,
       '',
       'Beta access is currently free. Customer contact details are shown only after a successful claim.',
+      '',
+      'You are receiving this email because you applied as a Clearout YYC provider.',
+      'Clearout YYC is operated by Aurora Site Solutions.',
+      'Calgary, Alberta, Canada',
+      'Contact: contact@aurorasitesolutions.com',
+      `Unsubscribe from provider lead emails: ${unsubscribeUrl}`,
+      '',
       'Provider support is online only. No phone dispatch.',
     ].join('\n')
     const html = [
@@ -105,7 +117,11 @@ export async function sendPendingProviderEmails(limit = getProviderEmailBatchLim
       `<p><b>Timing:</b> ${escapeHtml(timing)}</p>`,
       `<p><a href="${escapeHtml(n.claim_url)}">Claim beta access</a></p>`,
       '<p>Beta access is currently free. Customer contact details are shown only after a successful claim.</p>',
-      '<p>Provider support is online only. No phone dispatch.</p>',
+      '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />',
+      '<p style="font-size:12px;color:#64748b">You are receiving this email because you applied as a Clearout YYC provider.</p>',
+      '<p style="font-size:12px;color:#64748b">Clearout YYC is operated by Aurora Site Solutions.<br/>Calgary, Alberta, Canada<br/>Contact: contact@aurorasitesolutions.com</p>',
+      `<p style="font-size:12px;color:#64748b"><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe from provider lead emails</a></p>`,
+      '<p style="font-size:12px;color:#64748b">Provider support is online only. No phone dispatch.</p>',
     ].join('')
 
     try {
