@@ -1788,27 +1788,63 @@ function RequestForm({ lang }: { lang: Lang }) {
   const manualCaptcha = useManualCaptcha()
 
   const classification = useMemo(() => classifyLead({ categories, amount, timing, location, regular, blocked }), [categories, amount, timing, location, regular, blocked])
+  const photoMetaFromPrepared = (items: PreparedLeadPhoto[]): FileMeta[] => items.map(p => ({
+    file_name: p.file_name,
+    file_size: p.file_size,
+    file_type: p.mime_type,
+    uploaded_at: new Date().toISOString(),
+    review_status: 'uploaded',
+  }))
+
+  const setPreparedPhotos = (items: PreparedLeadPhoto[]) => {
+    const normalized = items.slice(0, 2).map((photo, index) => ({
+      ...photo,
+      sort_order: index,
+    }))
+
+    setLeadPhotos(normalized)
+    setPhotos(photoMetaFromPrepared(normalized))
+  }
+
   const photoHandler = async (files: FileList | null) => {
     setPhotoError('')
+
+    const selected = Array.from(files || [])
+    if (!selected.length) return
+
+    const remainingSlots = 2 - leadPhotos.length
+    if (remainingSlots <= 0) {
+      setPhotoError(lang === 'zh' ? '最多只能上传 2 张照片。请先删除一张再重新选择。' : 'You can upload up to 2 photos. Remove one before choosing another.')
+      return
+    }
+
     setPhotoBusy(true)
+
     try {
-      const prepared = await prepareLeadPhotoUploads(files)
-      setLeadPhotos(prepared)
-      setPhotos(prepared.map(p => ({
-        file_name: p.file_name,
-        file_size: p.file_size,
-        file_type: p.mime_type,
-        uploaded_at: new Date().toISOString(),
-        review_status: 'uploaded',
-      })))
+      const prepared: PreparedLeadPhoto[] = []
+      const usable = selected.slice(0, remainingSlots)
+
+      for (let i = 0; i < usable.length; i++) {
+        prepared.push(await compressLeadPhoto(usable[i], leadPhotos.length + i))
+      }
+
+      setPreparedPhotos([...leadPhotos, ...prepared])
+
+      if (selected.length > remainingSlots) {
+        setPhotoError(lang === 'zh' ? '最多只能上传 2 张照片，多余照片已忽略。' : 'You can upload up to 2 photos. Extra photos were ignored.')
+      }
     } catch (e) {
-      setLeadPhotos([])
-      setPhotos([])
       setPhotoError(e instanceof Error ? e.message : String(e))
     } finally {
       setPhotoBusy(false)
     }
   }
+
+  const removeLeadPhoto = (index: number) => {
+    setPhotoError('')
+    setPreparedPhotos(leadPhotos.filter((_, i) => i !== index))
+  }
+
   const communitySelectOptions = [{ id: 'other', en: 'Other / not sure', zh: '其他 / 不确定' }, ...communities.map(c => ({ id: c.slug, en: `${c.name} (${areaName(c.area, 'en')})`, zh: `${c.name}（${areaName(c.area, 'zh')}）` }))]
   function chooseCommunity(slug: string) {
     setCommunitySlug(slug)
@@ -1911,10 +1947,47 @@ function RequestForm({ lang }: { lang: Lang }) {
                     help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
                   /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
       <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span><textarea value={contact.description} onChange={e => setContact({ ...contact, description: e.target.value })} placeholder={lang === 'zh' ? '例如：Beltline 公寓，有一张沙发和一个床垫，本周清走。' : 'Example: Beltline apartment, sofa and mattress, this week.'} className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label>
-      <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{photoBusy ? (lang === 'zh' ? '正在压缩照片…' : 'Compressing photos…') : (lang === 'zh' ? '上传照片（可选，最多 2 张）' : 'Upload photos (optional, max 2)')}<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>
-      <p className="mt-2 text-xs leading-5 text-slate-500">{lang === 'zh' ? '原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。' : 'Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}</p>
+      <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+        <Camera size={18}/>
+        {photoBusy
+          ? (lang === 'zh' ? '正在压缩照片…' : 'Compressing photos…')
+          : (lang === 'zh' ? `添加照片（可选，已选 ${leadPhotos.length}/2）` : `Add photos (optional, ${leadPhotos.length}/2 selected)`)}
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={e => {
+            photoHandler(e.target.files)
+            e.currentTarget.value = ''
+          }}
+        />
+      </label>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        {lang === 'zh'
+          ? '可分次添加，最多 2 张；每张原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。'
+          : 'You can add photos one at a time, up to 2 total. Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}
+      </p>
       {photoError && <p className="mt-2 text-xs font-semibold text-red-700">{photoError}</p>}
-      {leadPhotos.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{leadPhotos.map((photo, i) => <div key={i} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/10"><img src={photo.preview_url} alt={photo.file_name} className="h-40 w-full object-contain"/><div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width}×{photo.height}</div></div>)}</div>}
+      {leadPhotos.length > 0 && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {leadPhotos.map((photo, i) => (
+            <div key={`${photo.file_name}-${i}`} className="relative overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/10">
+              <button
+                type="button"
+                onClick={() => removeLeadPhoto(i)}
+                className="absolute right-2 top-2 z-10 rounded-full bg-white/95 px-3 py-1 text-xs font-bold text-red-700 shadow-sm ring-1 ring-black/10 hover:bg-red-50"
+              >
+                {lang === 'zh' ? '删除' : 'Remove'}
+              </button>
+              <img src={photo.preview_url} alt={photo.file_name} className="h-40 w-full bg-slate-100 object-contain"/>
+              <div className="p-3 text-xs font-semibold text-slate-500">
+                {formatBytes(photo.file_size)} · {photo.width}×{photo.height}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
