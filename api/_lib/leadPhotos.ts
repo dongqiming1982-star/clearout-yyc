@@ -134,7 +134,11 @@ export async function createStorageSignedUrl(bucket: string, path: string, expir
   const signed = data?.signedURL || data?.signedUrl || data?.signed_url || ''
   if (!signed) throw new Error('Storage did not return a signed URL.')
 
-  return signed.startsWith('http') ? signed : `${base}${signed}`
+  if (signed.startsWith('http')) return signed
+  if (signed.startsWith('/storage/v1/')) return `${base}${signed}`
+
+  const normalized = signed.startsWith('/') ? signed : `/${signed}`
+  return `${base}/storage/v1${normalized}`
 }
 
 export async function uploadLeadPhotosForLead(leadId: string, leadPublicId: string, photos: LeadPhotoUpload[] = []) {
