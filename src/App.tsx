@@ -1914,7 +1914,7 @@ function RequestForm({ lang }: { lang: Lang }) {
       <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{photoBusy ? (lang === 'zh' ? '正在压缩照片…' : 'Compressing photos…') : (lang === 'zh' ? '上传照片（可选，最多 2 张）' : 'Upload photos (optional, max 2)')}<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>
       <p className="mt-2 text-xs leading-5 text-slate-500">{lang === 'zh' ? '原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。' : 'Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}</p>
       {photoError && <p className="mt-2 text-xs font-semibold text-red-700">{photoError}</p>}
-      {leadPhotos.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{leadPhotos.map((photo, i) => <div key={i} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/10"><img src={photo.preview_url} alt={photo.file_name} className="h-40 w-full object-cover"/><div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width}×{photo.height}</div></div>)}</div>}
+      {leadPhotos.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{leadPhotos.map((photo, i) => <div key={i} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/10"><img src={photo.preview_url} alt={photo.file_name} className="h-40 w-full object-contain"/><div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width}×{photo.height}</div></div>)}</div>}
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
@@ -2063,7 +2063,7 @@ function LeadPhotoGallery({ lang, photos }: { lang: Lang; photos?: LeadPhotoView
     </div>
     <div className="mt-3 grid gap-3 sm:grid-cols-2">
       {active.map((photo, i) => <a key={photo.public_id || i} href={photo.signed_url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl bg-white ring-1 ring-black/10 hover:ring-red-700/30">
-        <img src={photo.signed_url} alt={photo.file_name || `Lead photo ${i + 1}`} className="h-52 w-full object-cover" loading="lazy" />
+        <img src={photo.signed_url} alt={photo.file_name || `Lead photo ${i + 1}`} className="h-52 w-full object-contain" loading="lazy" />
         <div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width || '—'}×{photo.height || '—'}</div>
       </a>)}
     </div>
