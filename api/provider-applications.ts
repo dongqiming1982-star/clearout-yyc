@@ -3,6 +3,7 @@ import { normalizeEmail, normalizeNorthAmericanPhone } from './_lib/validation.j
 import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
 import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'
 import { sendProviderApplicationReceivedEmail } from './_lib/providerLifecycleEmails.js'
+import { normalizeProviderDispatchAreas, normalizeProviderServiceTypes } from './_lib/taxonomy.js'
 
 const PROVIDER_DESCRIPTION_MAX = 300
 
@@ -51,6 +52,13 @@ export default async function handler(req: any, res: any) {
     application.phone = normalizedProviderPhone
     application.email = normalizedProviderEmail
     application.business_description = businessDescription
+    application.service_areas = normalizeProviderDispatchAreas(application.service_areas)
+    application.services_accepted = normalizeProviderServiceTypes(application.services_accepted)
+    application.accepts_email_leads = true
+    application.accepts_sms_leads = Boolean(application.sms_consent_confirmed)
+    application.preferred_notification = 'sms'
+    application.available_days = []
+    application.available_time_windows = []
 
     const row = flatProviderApplication(application, String(source_url || req.headers?.referer || ''))
     let supabase: any = { skipped: true }
@@ -70,8 +78,9 @@ export default async function handler(req: any, res: any) {
         })
       }
 
-      const wantsEmail = application.accepts_email_leads !== false
-      const wantsSms = application.accepts_sms_leads === true && application.sms_consent_confirmed === true
+      const wantsEmail = true
+      const smsConsentConfirmed = application.sms_consent_confirmed === true
+      const wantsSms = false
       const inserted = await supabaseInsert('providers', {
         business_name: String(application.provider_display_name || application.business_name || 'Provider'),
         contact_name: String(application.contact_name || ''),
@@ -80,13 +89,15 @@ export default async function handler(req: any, res: any) {
         phone: String(application.phone || ''),
         approved: false,
         active: false,
-        service_areas: asArray(application.service_areas).length ? asArray(application.service_areas) : ['calgary'],
+        service_areas: normalizeProviderDispatchAreas(application.service_areas),
+        service_types: normalizeProviderServiceTypes(application.services_accepted),
+        vehicle_capabilities: asArray(application.vehicle_capabilities),
         speaks_english: true,
         speaks_chinese: false,
         notify_by_email: true,
         notify_by_sms: wantsSms,
         email_opt_in_at: wantsEmail ? new Date().toISOString() : null,
-        sms_opt_in_at: wantsSms ? new Date().toISOString() : null,
+        sms_opt_in_at: smsConsentConfirmed ? new Date().toISOString() : null,
         consent_text_version: 'provider-beta-v23',
         consent_ip: String(req.headers?.['x-forwarded-for'] || ''),
         consent_user_agent: String(req.headers?.['user-agent'] || ''),

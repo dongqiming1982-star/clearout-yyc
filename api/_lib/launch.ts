@@ -66,11 +66,7 @@ export function flatProviderApplication(application: Record<string, unknown>, so
     vehicle_capabilities: list(application.vehicle_capabilities),
     max_vehicle_level: String(application.max_vehicle_level ?? ''),
     crew_capacity: str(application.crew_capacity),
-    preferred_notification: str(application.preferred_notification),
     daily_lead_limit: String(application.daily_lead_limit ?? ''),
-    available_days: list(application.available_days),
-    available_time_windows: list(application.available_time_windows),
-    accepts_same_day: str(application.accepts_same_day),
     sms_consent_confirmed: String(bool(application.sms_consent_confirmed)),
     legal_operation_confirmed: String(bool(application.legal_operation_confirmed)),
     no_illegal_dumping_confirmed: String(bool(application.no_illegal_dumping_confirmed)),
@@ -171,9 +167,8 @@ export function providerApplicationEmail(row: Record<string, unknown>) {
     `Areas: ${row.service_areas}`,
     `Services: ${row.services_accepted}`,
     `Vehicles: ${row.vehicle_capabilities}`,
-    `Notification: ${row.preferred_notification}`,
     `Source: ${row.source_url}`,
   ].join('\n')
-  const html = `<h2>${escapeHtml(subject)}</h2><p><b>Provider:</b> ${escapeHtml(row.provider_display_name)}</p><p><b>Contact:</b> ${escapeHtml(row.contact_name)}</p><p><b>Phone:</b> ${escapeHtml(row.phone)}</p><p><b>Email:</b> ${escapeHtml(row.email)}</p><p><b>Description:</b> ${escapeHtml(row.business_description)}</p><p><b>Areas:</b> ${escapeHtml(row.service_areas)}</p><p><b>Services:</b> ${escapeHtml(row.services_accepted)}</p><p><b>Vehicles:</b> ${escapeHtml(row.vehicle_capabilities)}</p><p><b>Notification:</b> ${escapeHtml(row.preferred_notification)}</p><p><b>Source:</b> ${escapeHtml(row.source_url)}</p>`
+  const html = `<h2>${escapeHtml(subject)}</h2><p><b>Provider:</b> ${escapeHtml(row.provider_display_name)}</p><p><b>Contact:</b> ${escapeHtml(row.contact_name)}</p><p><b>Phone:</b> ${escapeHtml(row.phone)}</p><p><b>Email:</b> ${escapeHtml(row.email)}</p><p><b>Description:</b> ${escapeHtml(row.business_description)}</p><p><b>Areas:</b> ${escapeHtml(row.service_areas)}</p><p><b>Services:</b> ${escapeHtml(row.services_accepted)}</p><p><b>Vehicles:</b> ${escapeHtml(row.vehicle_capabilities)}</p><p><b>Source:</b> ${escapeHtml(row.source_url)}</p>`
   return { subject, text, html }
 }

@@ -79,7 +79,7 @@ async function getSummary(res: any) {
 }
 async function getProviders(res: any) {
   const providers = await supabaseAdminFetch(
-    'providers?select=id,public_id,business_name,contact_name,business_description,email,phone,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,application_email_sent_at,approval_email_sent_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
+    'providers?select=id,public_id,business_name,contact_name,business_description,email,phone,service_areas,service_types,vehicle_capabilities,daily_claim_limit,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,application_email_sent_at,approval_email_sent_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
   )
   return res.status(200).json({ ok: true, providers })
 }

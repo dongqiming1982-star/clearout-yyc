@@ -19,6 +19,17 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import {
+  areaOptions,
+  providerAreaOptions,
+  providerServiceOptions,
+  requestCategories,
+  normalizeDispatchArea,
+  normalizeLeadServiceType,
+  normalizeProviderDispatchAreas,
+  normalizeProviderServiceTypes,
+} from './shared/clearoutTaxonomy'
+import type { DispatchArea } from './shared/clearoutTaxonomy'
 
 const CUSTOMER_DESCRIPTION_MAX = 150
 const PROVIDER_DESCRIPTION_MAX = 300
@@ -38,7 +49,7 @@ type Route =
   | { type: 'privacy' }
   | { type: 'terms' }
 
-type Area = 'central' | 'nw' | 'ne' | 'sw' | 'se' | 'unknown'
+type Area = DispatchArea
 type LeadStatus = 'submitted' | 'dispatched_free_beta' | 'rejected_special_item' | 'sold_partial' | 'exclusive_sold' | 'sold_out' | 'invalid' | 'closed'
 type ApprovalStatus = 'submitted' | 'approved' | 'needs_verification' | 'suspended' | 'expired' | 'rejected'
 
@@ -236,25 +247,6 @@ const copy = {
   },
 }
 
-const areaOptions = [
-  { id: 'central', en: 'Central / Downtown', zh: '市中心 / Central' },
-  { id: 'nw', en: 'NW Calgary', zh: '西北 NW' },
-  { id: 'ne', en: 'NE Calgary', zh: '东北 NE' },
-  { id: 'sw', en: 'SW Calgary', zh: '西南 SW' },
-  { id: 'se', en: 'SE Calgary', zh: '东南 SE' },
-] as const
-
-const requestCategories = [
-  { id: 'mattress_bed', en: 'Mattress / bed', zh: '床垫 / 床架', icon: '🛏️' },
-  { id: 'sofa_furniture', en: 'Sofa / furniture', zh: '沙发 / 家具', icon: '🛋️' },
-  { id: 'move_out_leftovers', en: 'Move-out leftovers', zh: '退租剩余杂物', icon: '📦' },
-  { id: 'garage_basement', en: 'Garage / basement junk', zh: '车库 / 地下室杂物', icon: '🧰' },
-  { id: 'appliances_electronics', en: 'Appliances / electronics', zh: '家电 / 电子废料', icon: '🔌' },
-  { id: 'yard_waste', en: 'Yard waste / branches', zh: '庭院垃圾 / 树枝', icon: '🌿' },
-  { id: 'renovation_debris', en: 'Renovation debris', zh: '装修尾料', icon: '🧱' },
-  { id: 'not_sure', en: 'Not sure / upload photos', zh: '不确定 / 上传照片', icon: '📷' },
-]
-
 const amountOptions = [
   { id: 'one_item', en: '1 item', zh: '1 件' },
   { id: 'two_three_items', en: '2–3 items', zh: '2–3 件' },
@@ -298,27 +290,6 @@ const vehicleOptions = [
   { id: 'dump_trailer', level: 4, en: 'Dump trailer', zh: '大拖车 / Dump trailer' },
 ]
 
-const providerServiceOptions = [
-  { id: 'mattress_bed', en: 'Mattress / bed', zh: '床垫 / 床架' },
-  { id: 'sofa_furniture', en: 'Sofa / furniture', zh: '沙发 / 家具' },
-  { id: 'move_out_leftovers', en: 'Move-out leftovers', zh: '退租剩余杂物' },
-  { id: 'garage_basement', en: 'Garage / basement junk', zh: '车库 / 地下室杂物' },
-  { id: 'appliances_electronics', en: 'Appliances / electronics', zh: '家电 / 电子废料' },
-  { id: 'yard_waste', en: 'Yard waste', zh: '庭院垃圾' },
-  { id: 'renovation_debris', en: 'Renovation debris', zh: '装修尾料' },
-]
-
-const dayOptions = [
-  { id: 'mon', en: 'Mon', zh: '周一' }, { id: 'tue', en: 'Tue', zh: '周二' }, { id: 'wed', en: 'Wed', zh: '周三' },
-  { id: 'thu', en: 'Thu', zh: '周四' }, { id: 'fri', en: 'Fri', zh: '周五' }, { id: 'sat', en: 'Sat', zh: '周六' }, { id: 'sun', en: 'Sun', zh: '周日' },
-]
-
-const timeWindowOptions = [
-  { id: 'morning', en: 'Morning', zh: '上午' },
-  { id: 'afternoon', en: 'Afternoon', zh: '下午' },
-  { id: 'evening', en: 'Evening', zh: '傍晚' },
-  { id: 'flexible', en: 'Flexible', zh: '灵活' },
-]
 
 
 type Community = {
@@ -851,7 +822,7 @@ function requestUrlForCommunity(slug: string) { return `/request?community=${slu
 function requestUrlForService(slug: string) { return `/request?service=${slug}` }
 function getCommunityBySlug(slug: string | null | undefined) { return communities.find(c => c.slug === slug) || null }
 function getServiceBySlug(slug: string | null | undefined) { return servicePages.find(s => s.slug === slug) || null }
-function areaName(area: Area, lang: Lang) { return optionLabel([...areaOptions, { id: 'unknown', en: 'Calgary', zh: 'Calgary' }], area, lang) }
+function areaName(area: Area, lang: Lang) { return optionLabel([...providerAreaOptions, { id: 'unknown', en: 'Calgary', zh: 'Calgary' }], area, lang) }
 
 function cn(...v: Array<string | false | null | undefined>) { return v.filter(Boolean).join(' ') }
 function uid(prefix: string) { return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}` }
@@ -1321,7 +1292,7 @@ function applySeo(route: Route, lang: Lang) {
   }
   if (route.type === 'providerJoin') {
     title = 'Get Calgary Junk Removal Leads | Clearout YYC Providers'
-    description = 'Join the free beta provider list for Calgary junk removal leads. No app, no monthly fee, SMS alerts.'
+    description = 'Join the free beta provider list for Calgary junk removal leads. No app, no monthly fee, platform-managed lead alerts.'
   }
   if (route.type === 'providerLeads') {
     title = 'Provider Lead Access | Clearout YYC'
@@ -1359,13 +1330,24 @@ function applySeo(route: Route, lang: Lang) {
 
 function matchingProviders(lead: Lead) {
   const providers = getList<ProviderApplication>('clearout_providers')
+  const leadArea = normalizeDispatchArea(lead.area, lead.community_or_postal)
+  const leadType = normalizeLeadServiceType(lead.service_tags.length ? lead.service_tags : lead.request_categories)
+
   return providers
-    .filter(p => p.active && p.beta_opt_in && p.sms_consent_confirmed)
-    .filter(p => lead.area === 'unknown' || p.service_areas.includes(lead.area))
-    .filter(p => p.max_vehicle_level >= lead.required_vehicle_level)
-    .filter(p => lead.required_crew_size <= 1 || p.crew_capacity === 'two' || p.crew_capacity === 'three_plus')
-    .filter(p => lead.service_tags.length === 0 || p.services_accepted.some(s => lead.service_tags.includes(s)))
-    .sort((a, b) => String(a.last_assigned_at || '').localeCompare(String(b.last_assigned_at || '')))
+    .filter(p => p.active && p.beta_opt_in)
+    .map(p => {
+      const providerAreas = normalizeProviderDispatchAreas(p.service_areas)
+      const providerTypes = normalizeProviderServiceTypes(p.services_accepted)
+      const areaMatch = providerAreas.includes('all_calgary') || leadArea === 'unknown' || providerAreas.includes(leadArea)
+      const typeMatch = providerTypes.includes(leadType)
+      const tier = areaMatch && typeMatch ? 1 : typeMatch ? 2 : 99
+      return { provider: p, tier }
+    })
+    .filter(item => item.tier < 99)
+    .filter(item => item.provider.max_vehicle_level >= lead.required_vehicle_level)
+    .filter(item => lead.required_crew_size <= 1 || item.provider.crew_capacity === 'two' || item.provider.crew_capacity === 'three_plus')
+    .sort((a, b) => a.tier - b.tier || String(a.provider.last_assigned_at || '').localeCompare(String(b.provider.last_assigned_at || '')))
+    .map(item => item.provider)
     .slice(0, 3)
 }
 
@@ -1878,7 +1860,7 @@ function RequestForm({ lang }: { lang: Lang }) {
       customer_name: contact.name.trim(), customer_phone: normalizedCustomerPhone, customer_email: normalizedCustomerEmail || '', community_slug: communitySlug === 'other' ? '' : communitySlug, community_or_postal: contact.community, area: contact.area,
       consent_contact_share: consent, consent_real_request: real, customer_consent_at: consentAt, no_phone_spam_limit: 3, phone_verified: false, phone_verified_at: '', otp_sent_at: '', otp_attempts: 0, verification_method: 'manual_follow_up',
       request_categories: categories, rough_amount: amount, item_location: location, timing, request_description: contact.description, photos,
-      regular_special_items: regular, blocked_or_hazardous_items: blocked, service_tags: categories, risk_flags: classification.riskFlags,
+      regular_special_items: regular, blocked_or_hazardous_items: blocked, service_tags: [normalizeLeadServiceType(categories)], risk_flags: classification.riskFlags,
       lead_grade: classification.grade, dispatch_eligible: classification.eligible, rejection_reason: classification.reason,
       required_vehicle_level: classification.vehicle, required_crew_size: classification.crew,
       future_lead_access_fee: pricing.shared[0], lead_access_fee: 0, sold_count: 0, max_sold_count: 3, access_mode: 'open', shared_access_prices: pricing.shared, exclusive_access_fee: pricing.exclusive, current_shared_access_fee: pricing.shared[0],
@@ -1949,7 +1931,7 @@ function RequestForm({ lang }: { lang: Lang }) {
                     value={contact.phone}
                     setValue={v => { setContact({ ...contact, phone: v }); setPhoneVerified(false); setOtpSentAt('') }}
                     help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
-                  /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
+                  /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；派单按 Calgary 大区匹配，不做社区硬匹配。' : 'Community pages pre-fill this field. Dispatch matches by Calgary area, not hard community boundaries.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
       <label className="mt-5 block">
         <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span>
         <textarea
@@ -2056,12 +2038,10 @@ function ProviderPage({ lang }: { lang: Lang }) {
 }
 
 function ProviderForm({ lang }: { lang: Lang }) {
-  const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', description: '', preferred: 'sms' as ProviderApplication['preferred_notification'], crew: 'one' as ProviderApplication['crew_capacity'], daily: 3, sameDay: 'depends' as ProviderApplication['accepts_same_day'] })
-  const [areas, setAreas] = useState<Area[]>(['central'])
-  const [services, setServices] = useState<string[]>(['mattress_bed', 'sofa_furniture'])
+  const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', description: '', crew: 'one' as ProviderApplication['crew_capacity'], daily: 3 })
+  const [areas, setAreas] = useState<Area[]>(['all_calgary'])
+  const [services, setServices] = useState<string[]>(['mattress_bed', 'furniture_household'])
   const [vehicles, setVehicles] = useState<string[]>(['pickup'])
-  const [days, setDays] = useState<string[]>(['mon','tue','wed','thu','fri'])
-  const [windows, setWindows] = useState<string[]>(['flexible'])
   const [smsConsent, setSmsConsent] = useState(false)
   const [legal, setLegal] = useState(false)
   const [dumping, setDumping] = useState(false)
@@ -2085,13 +2065,13 @@ function ProviderForm({ lang }: { lang: Lang }) {
     if (businessDescription.length > PROVIDER_DESCRIPTION_MAX) { setError(lang === 'zh' ? `服务商介绍最多 ${PROVIDER_DESCRIPTION_MAX} 个字符。` : `Business introduction must be ${PROVIDER_DESCRIPTION_MAX} characters or less.`); return }
 
     if (!areas.length || !services.length || !vehicles.length) { setError(lang === 'zh' ? '请选择服务区域、可接服务和车辆能力。' : 'Choose service areas, services, and vehicle capability.'); return }
-    if (!smsConsent || !legal || !dumping || !terms) { setError(lang === 'zh' ? '请确认短信接收、合法经营、不非法倾倒和条款。' : 'Please confirm SMS opt-in, legal operation, no illegal dumping, and terms.'); return }
+    if (!smsConsent || !legal || !dumping || !terms) { setError(lang === 'zh' ? '请确认线索通知同意、合法经营、不非法倾倒和条款。' : 'Please confirm lead notification consent, legal operation, no illegal dumping, and terms.'); return }
     if (!isManualCaptchaReady(manualCaptcha)) { setError(lang === 'zh' ? '请输入人工验证码答案。' : 'Please enter the manual verification answer.'); return }
     const maxLevel = Math.max(...vehicles.map(v => vehicleOptions.find(x => x.id === v)?.level || 1))
     const row: ProviderApplication = {
       application_id: uid('provider'), created_at: new Date().toISOString(), approval_status: 'submitted', active: true, beta_opt_in: true, verified: false, last_assigned_at: null,
-      provider_display_name: form.name.trim(), contact_name: form.contact.trim(), phone: normalizedProviderPhone, email: normalizedProviderEmail, business_description: businessDescription, service_areas: areas, services_accepted: services, vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
-      accepts_sms_leads: form.preferred !== 'email', accepts_email_leads: form.preferred !== 'sms', sms_consent_confirmed: smsConsent, preferred_notification: form.preferred, daily_lead_limit: form.daily, available_days: days, available_time_windows: windows, accepts_same_day: form.sameDay, refund_or_bad_number_policy_seen: true,
+      provider_display_name: form.name.trim(), contact_name: form.contact.trim(), phone: normalizedProviderPhone, email: normalizedProviderEmail, business_description: businessDescription, service_areas: normalizeProviderDispatchAreas(areas), services_accepted: normalizeProviderServiceTypes(services), vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
+      accepts_sms_leads: smsConsent, accepts_email_leads: true, sms_consent_confirmed: smsConsent, preferred_notification: 'sms', daily_lead_limit: form.daily, available_days: [], available_time_windows: [], accepts_same_day: 'depends', refund_or_bad_number_policy_seen: true,
       provider_type: 'not_sure', legal_owner_name: '', corporation_legal_name: '', registered_trade_name: '', business_number_bn: '', gst_hst_account: '', city_business_id: '', alberta_registration_proof: null,
       general_liability_status: 'not_sure', commercial_auto_status: 'not_sure', insurance_company: '', policy_number: '', insurance_expiry: '', general_liability_proof: null, commercial_auto_proof: null,
       uses_helpers: 'not_sure', wcb_status: 'not_sure', wcb_proof: null, special_item_capabilities: [], condo_jobs: 'depends_loading_zone', legal_operation_confirmed: legal, no_illegal_dumping_confirmed: dumping, independent_provider_confirmed: true, terms_confirmed: terms,
@@ -2135,12 +2115,11 @@ function ProviderForm({ lang }: { lang: Lang }) {
       />
       <span className="mt-1 block text-right text-xs font-semibold text-slate-400">{form.description.length}/{PROVIDER_DESCRIPTION_MAX}</span>
     </label>
-    <MultiSelect title={lang === 'zh' ? '服务区域' : 'Service areas'} options={areaOptions as any} selected={areas} setSelected={v => setAreas(v as Area[])} lang={lang}/>
+    <MultiSelect title={lang === 'zh' ? '服务区域' : 'Service areas'} options={providerAreaOptions as any} selected={areas} setSelected={v => setAreas(v as Area[])} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '可接清运类型' : 'Accepted job types'} options={providerServiceOptions} selected={services} setSelected={setServices} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '车辆能力' : 'Vehicle capability'} options={vehicleOptions} selected={vehicles} setSelected={setVehicles} lang={lang}/>
-    <div className="mt-6 grid gap-4 sm:grid-cols-3"><Select label={lang === 'zh' ? '人手能力' : 'Crew size'} value={form.crew} setValue={v => setForm({ ...form, crew: v as ProviderApplication['crew_capacity'] })} options={[{ id:'one', en:'1 person', zh:'1人' }, { id:'two', en:'2 people', zh:'2人' }, { id:'three_plus', en:'3+ people', zh:'3人以上' }]} lang={lang}/><Select label={lang === 'zh' ? '每日线索上限' : 'Daily lead limit'} value={String(form.daily)} setValue={v => setForm({ ...form, daily: Number(v) })} options={[{ id:'1', en:'1', zh:'1' }, { id:'3', en:'3', zh:'3' }, { id:'5', en:'5', zh:'5' }, { id:'20', en:'No limit beta', zh:'Beta 不限' }]} lang={lang}/><Select label={lang === 'zh' ? '通知方式' : 'Notification'} value={form.preferred} setValue={v => setForm({ ...form, preferred: v as ProviderApplication['preferred_notification'] })} options={[{ id:'sms', en:'SMS', zh:'短信' }, { id:'email', en:'Email', zh:'Email' }, { id:'both', en:'Both', zh:'都要' }]} lang={lang}/></div>
-    <MultiSelect title={lang === 'zh' ? '可服务星期' : 'Available days'} options={dayOptions} selected={days} setSelected={setDays} lang={lang}/><MultiSelect title={lang === 'zh' ? '可服务时间段' : 'Available windows'} options={timeWindowOptions} selected={windows} setSelected={setWindows} lang={lang}/>
-    <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意接收 Clearout YYC 的清运线索短信/邮件通知，可随时退订。' : 'I agree to receive Clearout YYC lead alerts by SMS/email and can opt out anytime.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={legal} onChange={e => setLegal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认本人/本业务有权在 Alberta 提供有偿清运服务，并自行负责保险、车辆、税务和处置规则。' : 'I confirm I am allowed to provide paid junk removal services in Alberta and am responsible for insurance, vehicle, tax, and disposal rules.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={dumping} onChange={e => setDumping(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意不会非法倾倒、遗弃或不当处理客户物品。' : 'I agree not to illegally dump, abandon, or improperly dispose of customer items.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我理解 Clearout YYC 是线索分发平台，不是清运公司、雇主或服务担保方；Beta 结束后的任何付费规则会在查看联系方式前显示。' : 'I understand Clearout YYC is a lead distribution platform, not a junk removal company, employer, or service guarantor; any future paid access rules will be shown before contact access.'}</span></label></div>
+    <div className="mt-6 grid gap-4 sm:grid-cols-2"><Select label={lang === 'zh' ? '人手能力' : 'Crew size'} value={form.crew} setValue={v => setForm({ ...form, crew: v as ProviderApplication['crew_capacity'] })} options={[{ id:'one', en:'1 person', zh:'1人' }, { id:'two', en:'2 people', zh:'2人' }, { id:'three_plus', en:'3+ people', zh:'3人以上' }]} lang={lang}/><Select label={lang === 'zh' ? '每日线索上限' : 'Daily lead limit'} value={String(form.daily)} setValue={v => setForm({ ...form, daily: Number(v) })} options={[{ id:'1', en:'1', zh:'1' }, { id:'3', en:'3', zh:'3' }, { id:'5', en:'5', zh:'5' }, { id:'20', en:'No limit beta', zh:'Beta 不限' }]} lang={lang}/></div>
+    <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意 Clearout YYC 通过电话、邮件或未来短信向我发送清运线索通知；短信可随时 STOP 退订。' : 'I agree Clearout YYC may send lead notifications by phone, email, or future SMS. SMS can be stopped anytime.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={legal} onChange={e => setLegal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认本人/本业务有权在 Alberta 提供有偿清运服务，并自行负责保险、车辆、税务和处置规则。' : 'I confirm I am allowed to provide paid junk removal services in Alberta and am responsible for insurance, vehicle, tax, and disposal rules.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={dumping} onChange={e => setDumping(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意不会非法倾倒、遗弃或不当处理客户物品。' : 'I agree not to illegally dump, abandon, or improperly dispose of customer items.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我理解 Clearout YYC 是线索分发平台，不是清运公司、雇主或服务担保方；Beta 结束后的任何付费规则会在查看联系方式前显示。' : 'I understand Clearout YYC is a lead distribution platform, not a junk removal company, employer, or service guarantor; any future paid access rules will be shown before contact access.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}<button onClick={submit} className="mt-6 rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (lang === 'zh' ? '加入免费 Beta 名单' : 'Join Free Beta List')}</button></div>
     <div className="space-y-5"><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '服务商规则' : 'Provider rules'}</h3><div className="mt-5 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? '先确认电话：客户需求在分享前会先确认手机号。' : 'Phone confirmation: customer phone is confirmed before dispatch.'}</p><p>✔ {lang === 'zh' ? 'Beta 免费：测试阶段免费接收客户电话。' : 'Free beta: receive customer contact free during testing.'}</p><p>✔ {lang === 'zh' ? '无 App、无月费、无登录后台。' : 'No app, no monthly fee, no dashboard login.'}</p><p>✔ {lang === 'zh' ? '未来如启用付费，查看联系方式前会清楚显示规则。' : 'If paid access is enabled later, terms are shown before contact release.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来付费原则' : 'Future paid access principles'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700"><p><b>{lang === 'zh' ? 'Beta 期间免费：' : 'Free during beta:'}</b> {lang === 'zh' ? '当前阶段先验证客户需求和服务商响应。' : 'This stage is for testing customer demand and provider response.'}</p><p><b>{lang === 'zh' ? '以后按需付费：' : 'Pay only if you choose:'}</b> {lang === 'zh' ? '如果未来开启付费，只有当你选择查看客户联系方式时才可能付费，无月费、无隐藏订阅。' : 'If paid access is enabled later, you may pay only when you choose to view a customer contact. No monthly fee or hidden subscription.'}</p><p><b>{lang === 'zh' ? '查看前明示：' : 'Shown before access:'}</b> {lang === 'zh' ? '共享/独家、已售人数、价格和退款/credit 规则会在查看联系方式前显示。' : 'Shared/exclusive status, sold count, price, and refund/credit rules will be shown before contact access.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来审核资料' : 'Future verification'}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '正式收费或 Verified 标识上线前，可补充商业保险、BN、Business ID、WCB 等文件。字段已在数据模型中保留。' : 'Before paid mode or verified badge, providers can add insurance, BN, Business ID, WCB, and other documents. Fields are already reserved in the data model.'}</p></div></div></div>
@@ -2822,7 +2801,7 @@ function Line({ icon, text }: { icon: React.ReactNode; text: string }) { return 
 function CompareCard({ title, rows, muted=false }: { title: string; rows: string[]; muted?: boolean }) { return <div className={cn('rounded-[1.7rem] p-6 shadow-sm ring-1', muted ? 'border-red-200 bg-red-50 text-red-950 ring-red-200' : 'border-emerald-200 bg-emerald-50 text-emerald-950 ring-emerald-200')}><h3 className="text-xl font-semibold">{title}</h3><ul className={cn('mt-5 grid gap-3 text-sm', muted ? 'text-red-900' : 'text-emerald-900')}>{rows.map(r => <li key={r}>{muted ? '✕' : '✔'} {r}</li>)}</ul></div> }
 function StepTitle({ n, title, className='' }: { n: string; title: string; className?: string }) { return <div className={cn('flex items-center gap-3 border-t border-black/5 pt-6 first:border-t-0 first:pt-0', className)}><span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-700 text-sm font-semibold text-white shadow-sm">{n}</span><h3 className="text-xl font-semibold tracking-tight">{title}</h3></div> }
 function ChoiceCard({ selected, onClick, title, danger=false }: { selected: boolean; onClick: () => void; title: string; danger?: boolean }) { return <button type="button" onClick={onClick} className={cn('rounded-2xl border p-4 text-left text-sm font-semibold transition', selected ? (danger ? 'border-red-700 bg-red-100 text-red-950 ring-2 ring-red-700/10 shadow-sm' : 'border-red-700 bg-red-50 text-red-950 ring-2 ring-red-700/10 shadow-sm') : 'border-black/10 bg-white text-slate-700 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-sm')}>{title}</button> }
-function MultiSelect({ title, options, selected, setSelected, lang }: { title: string; options: Array<{ id: string; en: string; zh: string }>; selected: string[]; setSelected: (v: string[]) => void; lang: Lang }) { return <div className="mt-6"><b>{title}</b><div className="mt-3 flex flex-wrap gap-2">{options.map(o => <button key={o.id} type="button" onClick={() => setSelected(toggleValue(selected, o.id))} className={cn('rounded-full px-4 py-2 text-sm font-semibold ring-1', selected.includes(o.id) ? 'bg-red-700 text-white ring-red-700' : 'bg-white text-slate-700 ring-black/10')}>{o[lang]}</button>)}</div></div> }
+function MultiSelect({ title, options, selected, setSelected, lang }: { title: string; options: ReadonlyArray<{ readonly id: string; readonly en: string; readonly zh: string }>; selected: string[]; setSelected: (v: string[]) => void; lang: Lang }) { return <div className="mt-6"><b>{title}</b><div className="mt-3 flex flex-wrap gap-2">{options.map(o => <button key={o.id} type="button" onClick={() => setSelected(toggleValue(selected, o.id))} className={cn('rounded-full px-4 py-2 text-sm font-semibold ring-1', selected.includes(o.id) ? 'bg-red-700 text-white ring-red-700' : 'bg-white text-slate-700 ring-black/10')}>{o[lang]}</button>)}</div></div> }
 function Select({ label, value, setValue, options, lang }: { label: string; value: string; setValue: (v: string) => void; options: Array<{ id: string; en: string; zh: string }>; lang: Lang }) { return <label><span className="mb-2 block text-sm font-semibold">{label}</span><select value={value} onChange={e => setValue(e.target.value)} className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10">{options.map(o => <option key={o.id} value={o.id}>{o[lang]}</option>)}</select></label> }
 function PhoneInput({ label, value, setValue, help='' }: { label: string; value: string; setValue: (v: string) => void; help?: string }) {
   return <label>

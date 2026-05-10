@@ -5,6 +5,7 @@ import { hasSupabaseConfig, supabaseRpc, supabasePatch, supabaseSelect } from '.
 import { getPlatformSettings } from './_lib/platformSettings.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 import { uploadLeadPhotosForLead } from './_lib/leadPhotos.js'
+import { normalizeDispatchArea, normalizeLeadServiceType } from './_lib/taxonomy.js'
 
 const CUSTOMER_DESCRIPTION_MAX = 150
 
@@ -13,9 +14,9 @@ function firstText(value: unknown) {
 }
 
 function serviceTypeFromLead(lead: any) {
-  if (Array.isArray(lead?.service_tags) && lead.service_tags.length) return firstText(lead.service_tags)
-  if (Array.isArray(lead?.request_categories) && lead.request_categories.length) return firstText(lead.request_categories)
-  return 'junk removal'
+  if (Array.isArray(lead?.service_tags) && lead.service_tags.length) return normalizeLeadServiceType(lead.service_tags)
+  if (Array.isArray(lead?.request_categories) && lead.request_categories.length) return normalizeLeadServiceType(lead.request_categories)
+  return 'general_review'
 }
 
 function mapLeadToRpc(lead: any, sourceUrl: string) {
@@ -25,7 +26,7 @@ function mapLeadToRpc(lead: any, sourceUrl: string) {
     p_customer_email: String(lead?.customer_email || ''),
     p_community_slug: String(lead?.community_slug || ''),
     p_community_or_postal: String(lead?.community_or_postal || ''),
-    p_area: String(lead?.area || ''),
+    p_area: normalizeDispatchArea(lead?.area, lead?.community_or_postal),
     p_service_type: serviceTypeFromLead(lead),
     p_job_size: String(lead?.rough_amount || lead?.job_size || ''),
     p_timeline: String(lead?.timing || lead?.timeline || ''),
@@ -77,6 +78,8 @@ export default async function handler(req: any, res: any) {
       })
     }
     lead.request_description = requestDescription
+    lead.area = normalizeDispatchArea(lead.area, lead.community_or_postal)
+    lead.service_tags = [serviceTypeFromLead(lead)]
 
     const sourceUrl = String(source_url || req.headers?.referer || '')
     const row = flatCustomerLead(lead, sourceUrl)

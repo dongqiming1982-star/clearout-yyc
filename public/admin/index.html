@@ -783,7 +783,7 @@ function leadPhotosHtml(photos, count, expiredCount) {
       '</tr></thead><tbody>',
       providers.map((provider) => [
         '<tr>',
-        '<td><b>' + esc(provider.business_name) + '</b><br><span class="muted">' + esc(provider.public_id) + '</span>' + (provider.business_description ? '<br><span class="muted">' + esc(provider.business_description) + '</span>' : '') + '</td>',
+        '<td><b>' + esc(provider.business_name) + '</b><br><span class="muted">' + esc(provider.public_id) + '</span>' + (provider.business_description ? '<br><span class="muted">' + esc(provider.business_description) + '</span>' : '') + '<br><span class="muted">Areas: ' + esc((provider.service_areas || []).join(', ')) + '</span><br><span class="muted">Types: ' + esc((provider.service_types || []).join(', ')) + '</span>' + (provider.daily_claim_limit ? '<br><span class="muted">Daily limit: ' + esc(provider.daily_claim_limit) + '</span>' : '') + '</td>',
         '<td>' + esc(provider.contact_name) + '</td>',
         '<td>' + esc(provider.email) + '</td>',
         '<td>' + esc(provider.phone) + '</td>',
