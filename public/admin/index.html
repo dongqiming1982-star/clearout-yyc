@@ -144,6 +144,42 @@
       padding: 4px 8px;
     }
 
+
+    .exclusive-claims-control {
+      margin-top: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      background: #fff;
+      padding: 22px;
+    }
+    .exclusive-claims-control-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .exclusive-claims-badge {
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      font-size: 12px;
+    }
+    .exclusive-claims-badge.on {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .exclusive-claims-badge.off {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .exclusive-claims-control p {
+      margin-top: 10px;
+      color: #64748b;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
     @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
@@ -1305,6 +1341,141 @@ else showTab('providers')
   })
 
   scheduleI18n()
+})()
+</script>
+
+
+<script id="v272-exclusive-claims-control">
+(function () {
+  function getToken() {
+    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
+    if (inputValue) return inputValue
+
+    const keys = ['clearout_admin_token', 'clearoutAdminToken', 'admin_token', 'adminToken', 'ADMIN_TOKEN', 'clearout_admin']
+    for (const key of keys) {
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value) return value
+    }
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || ''
+      const value = (localStorage.getItem(key) || '').trim()
+      if (value && /admin/i.test(key) && /token/i.test(key)) return value
+    }
+
+    return ''
+  }
+
+  function isZh() {
+    return document.getElementById('lang-zh')?.classList.contains('active')
+  }
+
+  async function fetchSettings() {
+    const token = getToken()
+    if (!token) return null
+
+    const response = await fetch('/api/admin?resource=settings&_=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'x-admin-token': token }
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || !data.ok) return null
+    return data.settings || {}
+  }
+
+  async function updateExclusiveClaims(value) {
+    const token = getToken()
+    if (!token) return
+
+    await fetch('/api/admin?resource=settings&action=update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-token': token
+      },
+      body: JSON.stringify({
+        key: 'exclusive_claims_enabled',
+        value: Boolean(value)
+      })
+    })
+
+    setTimeout(window.loadExclusiveClaimsControl, 200)
+    setTimeout(window.loadExclusiveClaimsControl, 800)
+  }
+
+  function ensureBox() {
+    let box = document.getElementById('exclusiveClaimsControl')
+    if (box) return box
+
+    const anchor = document.getElementById('platformControlsMessage')
+    if (!anchor || !anchor.parentElement) return null
+
+    box = document.createElement('div')
+    box.id = 'exclusiveClaimsControl'
+    box.className = 'exclusive-claims-control'
+    anchor.parentElement.appendChild(box)
+    return box
+  }
+
+  function render(settings) {
+    const box = ensureBox()
+    if (!box) return
+
+    const zh = isZh()
+    const enabled = Boolean(settings.exclusive_claims_enabled)
+
+    box.innerHTML = [
+      '<div class="exclusive-claims-control-head">',
+        '<div>',
+          '<h3 style="margin:0;font-size:20px;">' + (zh ? '独家买断' : 'Exclusive buyout') + '</h3>',
+          '<p>' + (zh
+            ? '关闭后，服务商认领页面不显示 Exclusive 按钮；后端也会拒绝独家认领。'
+            : 'When off, provider claim pages hide the Exclusive button, and the backend rejects exclusive claims.'
+          ) + '</p>',
+        '</div>',
+        '<span class="exclusive-claims-badge ' + (enabled ? 'on' : 'off') + '">' + (enabled ? 'ON' : 'OFF') + '</span>',
+      '</div>',
+      '<div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">',
+        '<button class="danger" onclick="window.setExclusiveClaimsEnabled(false)">' + (zh ? '关闭独家买断' : 'Disable exclusive') + '</button>',
+        '<button class="secondary" onclick="window.setExclusiveClaimsEnabled(true)">' + (zh ? '开启独家买断' : 'Enable exclusive') + '</button>',
+      '</div>'
+    ].join('')
+  }
+
+  window.setExclusiveClaimsEnabled = updateExclusiveClaims
+
+  window.loadExclusiveClaimsControl = async function () {
+    const settings = await fetchSettings()
+    if (!settings) return
+    render(settings)
+  }
+
+  function schedule() {
+    setTimeout(window.loadExclusiveClaimsControl, 300)
+    setTimeout(window.loadExclusiveClaimsControl, 1200)
+  }
+
+  const oldLoadPlatformControls = window.loadPlatformControls
+  if (typeof oldLoadPlatformControls === 'function') {
+    window.loadPlatformControls = async function () {
+      const result = await oldLoadPlatformControls.apply(this, arguments)
+      schedule()
+      return result
+    }
+  }
+
+  const oldSetLang = window.setLang
+  if (typeof oldSetLang === 'function') {
+    window.setLang = function () {
+      const result = oldSetLang.apply(this, arguments)
+      schedule()
+      return result
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', schedule)
+  schedule()
 })()
 </script>
 

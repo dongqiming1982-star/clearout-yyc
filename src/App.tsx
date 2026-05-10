@@ -2118,13 +2118,13 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
           <p className="mt-1">{leadUnavailableNotice.body}</p>
         </div>}
 
-        <div className="mt-7 grid gap-3 sm:grid-cols-2">
+        <div className={`mt-7 grid gap-3 ${leadData.exclusive_available ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
           <button disabled={!leadData.shared_available || Boolean(claiming)} onClick={() => claimLead('shared')} className="rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
             {claiming === 'shared' ? (lang === 'zh' ? '认领中…' : 'Claiming…') : (lang === 'zh' ? '免费 Shared 认领' : 'Claim Shared Free')}
           </button>
-          <button disabled={!leadData.exclusive_available || Boolean(claiming)} onClick={() => claimLead('exclusive')} className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
+          {leadData.exclusive_available && <button disabled={Boolean(claiming)} onClick={() => claimLead('exclusive')} className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
             {claiming === 'exclusive' ? (lang === 'zh' ? '认领中…' : 'Claiming…') : (lang === 'zh' ? '免费 Exclusive 认领' : 'Claim Exclusive Free')}
-          </button>
+          </button>}
         </div>
       </div>}
 

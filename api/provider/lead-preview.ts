@@ -1,4 +1,5 @@
 import { supabaseSelect } from '../_lib/supabase.js'
+import { getPlatformSettings } from '../_lib/platformSettings.js'
 
 type ProviderRow = {
   id: string
@@ -54,6 +55,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const provider = providers[0]
+    const platformSettings = await getPlatformSettings()
 
     const leads = await supabaseSelect<LeadRow>(
       `leads?select=id,public_id,status,customer_name,customer_phone,customer_email,community_or_postal,area,service_type,job_size,timeline,notes,shared_claim_count,shared_limit,expires_at,created_at&public_id=eq.${encodeURIComponent(leadPublicId)}&limit=1`
@@ -96,7 +98,7 @@ export default async function handler(req: any, res: any) {
         created_at: lead.created_at,
         already_claimed_by_you: alreadyClaimed,
         shared_available: alreadyClaimed ? false : ['published', 'shared_active'].includes(lead.status) && sharedCount < sharedLimit,
-        exclusive_available: alreadyClaimed ? false : lead.status === 'published' && sharedCount === 0,
+        exclusive_available: alreadyClaimed ? false : Boolean(platformSettings.exclusive_claims_enabled) && lead.status === 'published' && sharedCount === 0,
       },
     }
 

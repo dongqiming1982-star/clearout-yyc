@@ -6,6 +6,7 @@ export type PlatformSettings = {
   customer_requests_enabled: boolean
   lead_dispatch_enabled: boolean
   provider_claims_enabled: boolean
+  exclusive_claims_enabled: boolean
   lead_dispatch_channel: LeadDispatchChannel
 }
 
@@ -15,7 +16,9 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   customer_requests_enabled: true,
   lead_dispatch_enabled: true,
   provider_claims_enabled: true,
+  exclusive_claims_enabled: false,
   lead_dispatch_channel: 'email',
+  exclusive_claims_enabled: false,
 }
 
 const SETTING_KEYS: PlatformSettingKey[] = [
