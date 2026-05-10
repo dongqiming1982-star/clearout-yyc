@@ -15,21 +15,18 @@ export default async function handler(req: any, res: any) {
     }
 
 
-    if (accessType === 'exclusive') {
-      const platformSettings = await getPlatformSettings()
-      if (!platformSettings.exclusive_claims_enabled) {
-        return res.status(403).json({
-          error: 'Exclusive lead claims are currently disabled.',
-          result: {
-            ok: false,
-            code: 'exclusive_claims_disabled',
-            message: 'Exclusive lead claims are currently disabled.',
-          },
-        })
-      }
-    }
-
     const platformSettings = await getPlatformSettings()
+
+    if (accessType === 'exclusive' && !platformSettings.exclusive_claims_enabled) {
+      return res.status(403).json({
+        error: 'Exclusive lead claims are currently disabled.',
+        result: {
+          ok: false,
+          code: 'exclusive_claims_disabled',
+          message: 'Exclusive lead claims are currently disabled.',
+        },
+      })
+    }
     if (!platformSettings.provider_claims_enabled) {
       return res.status(423).json({
         error: 'Claiming is temporarily paused by Clearout YYC.',

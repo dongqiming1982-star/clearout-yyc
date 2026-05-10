@@ -6,24 +6,59 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>Clearout YYC Admin</title>
   <style>
-    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; background: #f8fafc; }
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+    }
     * { box-sizing: border-box; }
     body { margin: 0; }
-    header { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #e2e8f0; background: rgba(255,255,255,.92); backdrop-filter: blur(16px); }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #e2e8f0;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(16px);
+    }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 22px; }
     .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    h1 { margin: 0; font-size: 24px; }
+    h1, h2, h3 { margin-top: 0; }
+    h1 { margin-bottom: 0; font-size: 24px; }
+    h2 { font-size: 20px; }
+    h3 { font-size: 15px; }
     .sub { color: #64748b; font-size: 14px; margin-top: 6px; }
-    .card { background: white; border: 1px solid #e2e8f0; border-radius: 22px; padding: 18px; box-shadow: 0 12px 30px rgba(15, 23, 42, .05); }
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+    }
     .grid { display: grid; gap: 14px; }
     .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .stat b { display: block; font-size: 26px; }
     .stat span { color: #64748b; font-size: 13px; }
+    .stat-subline {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .stat-subline span {
+      border-radius: 999px;
+      background: #f1f5f9;
+      padding: 4px 8px;
+    }
     .login { display: grid; gap: 10px; max-width: 520px; }
     input { width: 100%; border: 1px solid #cbd5e1; border-radius: 16px; padding: 12px 14px; font: inherit; }
     button { border: 0; border-radius: 999px; padding: 10px 14px; font-weight: 700; cursor: pointer; background: #991b1b; color: white; }
     button.secondary { background: #f1f5f9; color: #0f172a; }
     button.warning { background: #92400e; }
+    button.danger { background: #991b1b; color: #fff; }
     button:disabled { opacity: .45; cursor: not-allowed; }
     .lang { display: flex; gap: 8px; }
     .lang button { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; padding: 8px 12px; }
@@ -44,9 +79,9 @@
     .scroll { overflow-x: auto; }
 
     .platform-controls { margin-top: 14px; }
-    .control-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
     .control-card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 14px; background: #fff; }
-    .control-card h3 { margin: 0; font-size: 15px; }
+    .control-card h3 { margin: 0; }
     .control-card p { margin: 8px 0 12px; color: #64748b; font-size: 12px; line-height: 1.5; }
     .control-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .control-status { display: inline-flex; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 800; }
@@ -55,17 +90,8 @@
     .control-status.sms { background: #fee2e2; color: #991b1b; }
     .control-status.email { background: #dcfce7; color: #166534; }
     .control-note { margin-top: 12px; font-size: 13px; color: #64748b; }
-    @media (max-width: 980px) { .control-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 640px) { .control-grid { grid-template-columns: 1fr; } }
 
-
-    .dispatch-summary { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 800; }
-    .dispatch-summary.ok { background: #dcfce7; color: #166534; }
-    .dispatch-summary.mid { background: #fef3c7; color: #92400e; }
-    .dispatch-summary.bad { background: #fee2e2; color: #991b1b; }
-
-
-    .dispatch-summary-fixed {
+    .dispatch-badge {
       margin-top: 8px;
       display: inline-flex;
       align-items: center;
@@ -75,26 +101,6 @@
       font-size: 12px;
       font-weight: 800;
     }
-    .dispatch-summary-fixed.ok { background: #dcfce7; color: #166534; }
-    .dispatch-summary-fixed.mid { background: #fef3c7; color: #92400e; }
-    .dispatch-summary-fixed.bad { background: #fee2e2; color: #991b1b; }
-
-
-    .dispatch-native {
-      margin-top: 8px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 4px 8px;
-      font-size: 12px;
-      font-weight: 800;
-    }
-    .dispatch-native.ok { background: #dcfce7; color: #166534; }
-    .dispatch-native.mid { background: #fef3c7; color: #92400e; }
-    .dispatch-native.bad { background: #fee2e2; color: #991b1b; }
-
-
     .dispatch-overview {
       margin-top: 14px;
       border: 1px solid #e2e8f0;
@@ -108,79 +114,26 @@
       gap: 10px;
       margin-top: 10px;
     }
-    .dispatch-mini {
-      border-radius: 14px;
-      background: white;
-      border: 1px solid #e2e8f0;
-      padding: 10px;
-    }
-    .dispatch-mini b {
-      display: block;
-      font-size: 22px;
-    }
-    .dispatch-mini span {
-      color: #64748b;
-      font-size: 12px;
-    }
+    .dispatch-mini { border-radius: 14px; background: white; border: 1px solid #e2e8f0; padding: 10px; }
+    .dispatch-mini b { display: block; font-size: 22px; }
+    .dispatch-mini span { color: #64748b; font-size: 12px; }
     .dispatch-mini.bad b { color: #991b1b; }
     .dispatch-mini.mid b { color: #92400e; }
     .dispatch-mini.ok b { color: #166534; }
-    @media (max-width: 980px) { .dispatch-overview-grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 640px) { .dispatch-overview-grid { grid-template-columns: 1fr; } }
 
-
-    .stat-subline-force {
-      margin-top: 10px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      font-size: 12px;
-      color: #64748b;
-      font-weight: 700;
+    @media (max-width: 980px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .dispatch-overview-grid { grid-template-columns: 1fr 1fr; }
     }
-    .stat-subline-force span {
-      border-radius: 999px;
-      background: #f1f5f9;
-      padding: 4px 8px;
+    @media (max-width: 780px) {
+      .wrap { padding: 16px; }
+      .top { align-items: flex-start; flex-direction: column; }
+      table { min-width: 900px; }
     }
-
-
-    .exclusive-claims-control {
-      margin-top: 14px;
-      border: 1px solid #e2e8f0;
-      border-radius: 24px;
-      background: #fff;
-      padding: 22px;
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr; }
+      .dispatch-overview-grid { grid-template-columns: 1fr; }
     }
-    .exclusive-claims-control-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-    .exclusive-claims-badge {
-      border-radius: 999px;
-      padding: 8px 14px;
-      font-weight: 900;
-      letter-spacing: .12em;
-      font-size: 12px;
-    }
-    .exclusive-claims-badge.on {
-      background: #dcfce7;
-      color: #166534;
-    }
-    .exclusive-claims-badge.off {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-    .exclusive-claims-control p {
-      margin-top: 10px;
-      color: #64748b;
-      font-weight: 700;
-      line-height: 1.6;
-    }
-
-    @media (max-width: 780px) { .stats { grid-template-columns: 1fr 1fr; } .wrap { padding: 16px; } table { min-width: 900px; } .top { align-items: flex-start; flex-direction: column; } }
   </style>
 </head>
 <body>
@@ -191,8 +144,8 @@
       <div class="sub" id="pageSub">Internal provider, lead, and claim management. Do not share your admin token.</div>
     </div>
     <div class="lang">
-      <button id="lang-en" onclick="setLang('en')">EN</button>
-      <button id="lang-zh" onclick="setLang('zh')">中文</button>
+      <button id="lang-en" type="button">EN</button>
+      <button id="lang-zh" type="button">中文</button>
     </div>
   </div>
 </header>
@@ -202,8 +155,8 @@
     <b id="loginTitle">Admin token</b>
     <input id="tokenInput" type="password" placeholder="Enter ADMIN_TOKEN" />
     <div class="actions">
-      <button onclick="saveToken()" id="enterBtn">Enter Admin</button>
-      <button class="secondary" onclick="clearToken()" id="clearBtn">Clear</button>
+      <button type="button" id="enterBtn">Enter Admin</button>
+      <button type="button" class="secondary" id="clearBtn">Clear</button>
     </div>
     <div class="muted" id="tokenNote">Token is stored only in this browser's localStorage.</div>
   </section>
@@ -215,24 +168,23 @@
       <div class="top">
         <div>
           <h2 id="platformControlsTitle" style="margin:0;font-size:20px">Platform controls</h2>
-          <div class="sub" id="platformControlsSub">Control customer submissions, dispatch, claims, and dispatch channel.</div>
+          <div class="sub" id="platformControlsSub">Control customer submissions, dispatch, claims, exclusive buyout, and dispatch channel.</div>
         </div>
         <div class="actions">
-          <button class="secondary" onclick="loadPlatformControls()" id="platformControlsRefresh">Refresh controls</button>
-          <button onclick="dispatchPendingLeads()" id="dispatchPendingLeadsBtn">Dispatch pending leads</button>
+          <button type="button" class="secondary" id="platformControlsRefresh">Refresh controls</button>
+          <button type="button" id="dispatchPendingLeadsBtn">Dispatch pending leads</button>
         </div>
       </div>
       <div class="control-grid" id="platformControlsGrid" style="margin-top:14px"></div>
       <div class="control-note" id="platformControlsMessage"></div>
-      <div class="dispatch-overview" id="dispatchQueueOverview">Loading dispatch queue...</div>
+      <div class="dispatch-overview" id="dispatchQueueOverview"></div>
     </section>
 
-
     <div class="tabs">
-      <button id="tab-providers" onclick="showTab('providers')">Providers</button>
-      <button id="tab-leads" onclick="showTab('leads')">Leads</button>
-      <button id="tab-claims" onclick="showTab('claims')">Claims</button>
-      <button class="secondary" onclick="loadAll()" id="refreshBtn">Refresh</button>
+      <button type="button" id="tab-providers" data-tab="providers">Providers</button>
+      <button type="button" id="tab-leads" data-tab="leads">Leads</button>
+      <button type="button" id="tab-claims" data-tab="claims">Claims</button>
+      <button type="button" class="secondary" id="refreshBtn">Refresh</button>
     </div>
 
     <div id="message"></div>
@@ -244,1240 +196,710 @@
 </main>
 
 <script>
-let token = localStorage.getItem('clearout_admin_token') || ''
-let currentTab = 'providers'
-let lang = localStorage.getItem('clearout_admin_lang') || 'en'
-
-const text = {
-  en: {
-    title: 'Clearout YYC Admin',
-    sub: 'Internal provider, lead, and claim management. Do not share your admin token.',
-    token: 'Admin token',
-    tokenPlaceholder: 'Enter ADMIN_TOKEN',
-    enter: 'Enter Admin',
-    clear: 'Clear',
-    tokenNote: "Token is stored only in this browser's localStorage.",
-    providers: 'Providers',
-    leads: 'Leads',
-    claims: 'Claims',
-    refresh: 'Refresh',
-    loading: 'Loading...',
-    enterToken: 'Enter admin token first.',
-    providersTotal: 'Providers total',
-    providersPending: 'Providers pending',
-    leadsTotal: 'Leads total',
-    claimsTotal: 'Claims total',
-    business: 'Business',
-    contact: 'Contact',
-    email: 'Email',
-    phone: 'Phone',
-    emailNotifications: 'Email notifications',
-    subscribed: 'Subscribed',
-    unsubscribed: 'Unsubscribed',
-    resubscribed: 'Resubscribed',
-    status: 'Status',
-    created: 'Created',
-    actions: 'Actions',
-    lead: 'Lead',
-    customer: 'Customer',
-    job: 'Job',
-    shared: 'Shared',
-    time: 'Time',
-    access: 'Access',
-    provider: 'Provider',
-    approve: 'Approve',
-    activate: 'Activate',
-    suspend: 'Suspend',
-    publish: 'Publish',
-    queue: 'Queue',
-    expire: 'Expire',
-    approved: 'approved',
-    pending: 'pending',
-    active: 'active',
-    inactive: 'inactive',
-    sharedAccess: 'shared',
-    exclusiveAccess: 'exclusive',
-    statusMap: {
-      published: 'published',
-      queued: 'queued',
-      shared_active: 'shared active',
-      shared_full: 'shared full',
-      exclusive_claimed: 'exclusive claimed',
-      expired: 'expired',
-      rejected: 'rejected'
-    }
-  },
-  zh: {
-    title: 'Clearout YYC 后台',
-    sub: '内部管理后台：管理服务商、客户需求和认领记录。不要分享后台密码。',
-    token: '后台密码',
-    tokenPlaceholder: '输入 ADMIN_TOKEN',
-    enter: '进入后台',
-    clear: '清除',
-    tokenNote: '后台密码只保存在当前浏览器的 localStorage 中。',
-    providers: '服务商',
-    leads: '客户需求',
-    claims: '认领记录',
-    refresh: '刷新',
-    loading: '加载中...',
-    enterToken: '请先输入后台密码。',
-    providersTotal: '服务商总数',
-    providersPending: '待审核服务商',
-    leadsTotal: '客户需求总数',
-    claimsTotal: '认领总数',
-    business: '商家名称',
-    contact: '联系人',
-    email: '邮箱',
-    phone: '电话',
-    emailNotifications: '邮件通知',
-    subscribed: '已订阅',
-    unsubscribed: '已退订',
-    resubscribed: '重新订阅',
-    status: '状态',
-    created: '创建时间',
-    actions: '操作',
-    lead: '需求',
-    customer: '客户',
-    job: '任务',
-    shared: '共享名额',
-    time: '时间',
-    access: '认领类型',
-    provider: '服务商',
-    approve: '批准',
-    activate: '启用',
-    suspend: '暂停',
-    publish: '发布',
-    queue: '排队',
-    expire: '过期',
-    approved: '已批准',
-    pending: '待审核',
-    active: '启用',
-    inactive: '停用',
-    sharedAccess: '共享',
-    exclusiveAccess: '独家',
-    statusMap: {
-      published: '已发布',
-      queued: '排队中',
-      shared_active: '共享中',
-      shared_full: '共享已满',
-      exclusive_claimed: '独家已认领',
-      expired: '已过期',
-      rejected: '已拒绝'
-    }
-  }
-}
-
-document.getElementById('tokenInput').value = token
-
-function t(key) { return text[lang][key] || key }
-function statusText(status) { return text[lang].statusMap[status] || status }
-
-function setLang(next) {
-  lang = next
-  localStorage.setItem('clearout_admin_lang', next)
-  applyLang()
-  if (document.getElementById('app').style.display !== 'none') loadAll()
-}
-
-function applyLang() {
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en'
-  document.title = t('title')
-  document.getElementById('pageTitle').textContent = t('title')
-  document.getElementById('pageSub').textContent = t('sub')
-  document.getElementById('loginTitle').textContent = t('token')
-  document.getElementById('tokenInput').placeholder = t('tokenPlaceholder')
-  document.getElementById('enterBtn').textContent = t('enter')
-  document.getElementById('clearBtn').textContent = t('clear')
-  document.getElementById('tokenNote').textContent = t('tokenNote')
-  document.getElementById('tab-providers').textContent = t('providers')
-  document.getElementById('tab-leads').textContent = t('leads')
-  document.getElementById('tab-claims').textContent = t('claims')
-  document.getElementById('refreshBtn').textContent = t('refresh')
-  document.getElementById('lang-en').classList.toggle('active', lang === 'en')
-  document.getElementById('lang-zh').classList.toggle('active', lang === 'zh')
-}
-
-function dispatchSummaryHtml(info) {
-  const total = Number(info?.total || 0)
-  const email = Number(info?.email || 0)
-  const sms = Number(info?.sms || 0)
-  const sent = Number(info?.sent || 0)
-  const pending = Number(info?.pending || 0)
-  const failed = Number(info?.failed || 0)
-  const skipped = Number(info?.skipped || 0)
-
-  if (!total) {
-    return '<span class="dispatch-native bad">Dispatch: not created</span>'
-  }
-
-  const channel = sms > 0 && email === 0
-    ? 'sms'
-    : email > 0 && sms === 0
-      ? 'email'
-      : 'mixed'
-
-  const parts = ['Dispatch: ' + channel, 'total ' + total]
-
-  if (sent) parts.push('sent ' + sent)
-  if (pending) parts.push('pending ' + pending)
-  if (failed) parts.push('failed ' + failed)
-  if (skipped) parts.push('skipped ' + skipped)
-
-  let cls = 'ok'
-  if (failed) cls = 'bad'
-  else if (pending || skipped) cls = 'mid'
-
-  return '<span class="dispatch-native ' + cls + '">' + esc(parts.join(' · ')) + '</span>'
-}
-
-
-
-function esc(v) {
-  return String(v ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
-}
-
-function badge(label, cls='') {
-  return `<span class="pill ${cls}">${esc(label)}</span>`
-}
-
-function setMessage(msg, error=false) {
-  document.getElementById('message').innerHTML = msg ? `<p class="${error ? 'error' : 'muted'}">${esc(msg)}</p>` : ''
-}
-
-async function api(path, options={}) {
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      'content-type': 'application/json',
-      'x-admin-token': token,
-      ...(options.headers || {}),
-    },
-  })
-  const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`)
-  return data
-}
-
-function saveToken() {
-  token = document.getElementById('tokenInput').value.trim()
-  localStorage.setItem('clearout_admin_token', token)
-  loadAll()
-}
-
-function clearToken() {
-  localStorage.removeItem('clearout_admin_token')
-  token = ''
-  document.getElementById('tokenInput').value = ''
-  document.getElementById('app').style.display = 'none'
-  document.getElementById('loginBox').style.display = 'grid'
-}
-
-function showTab(tab) {
-  currentTab = tab
-  for (const id of ['providers','leads','claims']) {
-    document.getElementById(`tab-${id}`).classList.toggle('active', id === tab)
-    document.getElementById(`${id}Panel`).style.display = id === tab ? 'block' : 'none'
-  }
-}
-
-async function loadAll() {
-  try {
-    if (!token) throw new Error(t('enterToken'))
-    setMessage(t('loading'))
-    document.getElementById('loginBox').style.display = 'none'
-    document.getElementById('app').style.display = 'block'
-    await Promise.all([loadSummary(), loadProviders(), loadLeads(), loadClaims()])
-    showTab(currentTab)
-    setMessage('')
-  } catch (e) {
-    setMessage(e.message, true)
-    document.getElementById('loginBox').style.display = 'grid'
-    document.getElementById('app').style.display = 'none'
-  }
-}
-
-async function loadSummary() {
-  const { summary } = await api('/api/admin?resource=summary')
-  document.getElementById('stats').innerHTML = `
-    <div class="card stat"><b>${summary.providers_total}</b><span>${t('providersTotal')}</span></div>
-    <div class="card stat"><b>${summary.providers_pending}</b><span>${t('providersPending')}</span></div>
-    <div class="card stat"><b>${summary.leads_total}</b><span>${t('leadsTotal')}</span></div>
-    <div class="card stat"><b>${summary.claims_total}</b><span>${t('claimsTotal')}</span></div>
-  `
-}
-
-async function providerAction(provider_id, action) {
-  await api('/api/admin?resource=provider&action=update', { method: 'POST', body: JSON.stringify({ provider_id, action }) })
-  await loadAll()
-}
-
-async function loadProviders() {
-  const { providers } = await api('/api/admin?resource=providers')
-  document.getElementById('providersPanel').innerHTML = `
-    <h2>${t('providers')}</h2>
-    <div class="scroll"><table>
-      <thead><tr><th>${t('business')}</th><th>${t('contact')}</th><th>${t('email')}</th><th>${t('phone')}</th><th>${t('emailNotifications')}</th><th>${t('status')}</th><th>${t('created')}</th><th>${t('actions')}</th></tr></thead>
-      <tbody>
-      ${providers.map(p => `
-        <tr>
-          <td><b>${esc(p.business_name)}</b><br><span class="muted">${esc(p.public_id)}</span></td>
-          <td>${esc(p.contact_name)}</td>
-          <td>${esc(p.email)}</td>
-          <td>${esc(p.phone)}</td>
-          <td>
-            ${
-              p.notify_by_email === false
-                ? badge(t('unsubscribed'),'bad')
-                : (p.email_resubscribed_at ? badge(t('resubscribed'),'ok') : badge(t('subscribed'),'ok'))
-            }
-            ${p.email_unsubscribed_at ? `<br><span class="muted">Off: ${esc(new Date(p.email_unsubscribed_at).toLocaleString())}</span>` : ''}
-            ${p.email_resubscribed_at ? `<br><span class="muted">On: ${esc(new Date(p.email_resubscribed_at).toLocaleString())}</span>` : ''}
-          </td>
-          <td>
-            ${p.approved ? badge(t('approved'),'ok') : badge(t('pending'),'mid')}
-            ${p.active ? badge(t('active'),'ok') : badge(t('inactive'),'bad')}
-          </td>
-          <td>${esc(new Date(p.created_at).toLocaleString())}</td>
-          <td class="actions">
-            <button onclick="providerAction('${p.id}','approve')">${t('approve')}</button>
-            <button class="secondary" onclick="providerAction('${p.id}','activate')">${t('activate')}</button>
-            <button class="warning" onclick="providerAction('${p.id}','suspend')">${t('suspend')}</button>
-          </td>
-        </tr>
-      `).join('')}
-      </tbody>
-    </table></div>
-  `
-}
-
-async function leadAction(lead_id, action) {
-  await api('/api/admin?resource=lead&action=update', { method: 'POST', body: JSON.stringify({ lead_id, action }) })
-  await loadAll()
-}
-
-async function loadLeads() {
-  const { leads } = await api('/api/admin?resource=leads')
-  document.getElementById('leadsPanel').innerHTML = `
-    <h2>${t('leads')}</h2>
-    <div class="scroll"><table>
-      <thead><tr><th>${t('lead')}</th><th>${t('customer')}</th><th>${t('contact')}</th><th>${t('job')}</th><th>${t('status')}</th><th>${t('shared')}</th><th>${t('created')}</th><th>${t('actions')}</th></tr></thead>
-      <tbody>
-      ${leads.map(l => `
-        <tr>
-          <td><b>${esc(l.public_id)}</b><br><span class="muted">${esc(l.community_or_postal || l.area || '')}</span><br>${dispatchSummaryHtml(l.dispatch_status)}</td>
-          <td>${esc(l.customer_name)}</td>
-          <td>${esc(l.customer_phone)}<br>${esc(l.customer_email || '')}</td>
-          <td>${esc(l.service_type)}<br><span class="muted">${esc(l.job_size)} · ${esc(l.timeline)}</span></td>
-          <td>${badge(statusText(l.status), l.status === 'published' || l.status === 'shared_active' ? 'ok' : l.status === 'queued' ? 'mid' : 'bad')}</td>
-          <td>${esc(l.shared_claim_count)} / ${esc(l.shared_limit)}</td>
-          <td>${esc(new Date(l.created_at).toLocaleString())}</td>
-          <td class="actions">
-            <button onclick="leadAction('${l.id}','publish')">${t('publish')}</button>
-            <button class="secondary" onclick="leadAction('${l.id}','queue')">${t('queue')}</button>
-            <button class="warning" onclick="leadAction('${l.id}','expire')">${t('expire')}</button>
-          </td>
-        </tr>
-      `).join('')}
-      </tbody>
-    </table></div>
-  `
-}
-
-async function loadClaims() {
-  const { claims } = await api('/api/admin?resource=claims')
-  document.getElementById('claimsPanel').innerHTML = `
-    <h2>${t('claims')}</h2>
-    <div class="scroll"><table>
-      <thead><tr><th>${t('time')}</th><th>${t('access')}</th><th>${t('status')}</th><th>${t('provider')}</th><th>${t('lead')}</th><th>${t('customer')}</th></tr></thead>
-      <tbody>
-      ${claims.map(c => `
-        <tr>
-          <td>${esc(new Date(c.created_at).toLocaleString())}</td>
-          <td>${badge(c.access === 'exclusive' ? t('exclusiveAccess') : t('sharedAccess'), c.access === 'exclusive' ? 'mid' : 'ok')}</td>
-          <td>${esc(c.status)}</td>
-          <td><b>${esc(c.provider?.business_name || '')}</b><br>${esc(c.provider?.email || '')}<br>${esc(c.provider?.phone || '')}</td>
-          <td>${esc(c.lead?.public_id || '')}<br>${esc(c.lead?.service_type || '')}<br>${esc(c.lead?.community_or_postal || '')}</td>
-          <td>${esc(c.lead?.customer_name || '')}<br>${esc(c.lead?.customer_phone || '')}<br>${esc(c.lead?.customer_email || '')}</td>
-        </tr>
-      `).join('')}
-      </tbody>
-    </table></div>
-  `
-}
-
-applyLang()
-if (token) loadAll()
-else showTab('providers')
-</script>
-
-<script>
 (function () {
-  function getAdminTokenForPlatformControls() {
-    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
-    if (inputValue) return inputValue
-
-    const candidates = [
-      'clearout_admin_token',
-      'clearoutAdminToken',
-      'admin_token',
-      'adminToken',
-      'ADMIN_TOKEN',
-      'clearout_admin'
-    ]
-
-    for (const key of candidates) {
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value) return value
-    }
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i) || ''
-      if (/admin/i.test(key) && /token/i.test(key)) {
-        const value = (localStorage.getItem(key) || '').trim()
-        if (value) return value
-      }
-    }
-
-    return ''
+  const storageKeys = {
+    token: 'clearout_admin_token',
+    lang: 'clearout_admin_lang',
   }
 
-  function getAdminLangForPlatformControls() {
-    return document.getElementById('lang-zh')?.classList.contains('active') ? 'zh' : 'en'
+  const state = {
+    token: localStorage.getItem(storageKeys.token) || '',
+    lang: localStorage.getItem(storageKeys.lang) || 'en',
+    currentTab: 'providers',
+    settings: null,
   }
 
-  function t(zh, en) {
-    return getAdminLangForPlatformControls() === 'zh' ? zh : en
-  }
-
-  async function fetchPlatformSettings(method, body) {
-    const token = getAdminTokenForPlatformControls()
-    if (!token) throw new Error('Missing ADMIN_TOKEN.')
-
-    const url = '/api/admin?resource=settings' + (method === 'POST' ? '&action=update' : '')
-    const response = await fetch(url, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': token
+  const text = {
+    en: {
+      title: 'Clearout YYC Admin',
+      sub: 'Internal provider, lead, and claim management. Do not share your admin token.',
+      token: 'Admin token',
+      tokenPlaceholder: 'Enter ADMIN_TOKEN',
+      enter: 'Enter Admin',
+      clear: 'Clear',
+      tokenNote: "Token is stored only in this browser's localStorage.",
+      providers: 'Providers',
+      leads: 'Leads',
+      claims: 'Claims',
+      refresh: 'Refresh',
+      loading: 'Loading...',
+      enterToken: 'Enter admin token first.',
+      platformControls: 'Platform controls',
+      platformControlsSub: 'Control customer submissions, dispatch, claims, exclusive buyout, and Email / SMS dispatch channel.',
+      refreshControls: 'Refresh controls',
+      dispatchPendingLeads: 'Dispatch pending leads',
+      dispatchingPendingLeads: 'Dispatching pending leads...',
+      pendingDispatchComplete: 'Pending dispatch complete',
+      checked: 'checked',
+      created: 'created',
+      controlsRefreshed: 'Controls refreshed. Recommended default: requests ON, dispatch ON, claiming ON, exclusive buyout OFF, channel Email.',
+      recommendedDefault: 'Recommended default: requests ON, dispatch ON, claiming ON, exclusive buyout OFF, channel Email.',
+      customerRequests: 'Customer requests',
+      customerRequestsDesc: 'When paused, customers cannot submit new requests.',
+      leadDispatch: 'Lead dispatch',
+      leadDispatchDesc: 'When paused, leads can enter admin but will not be sent to providers.',
+      providerClaiming: 'Provider claiming',
+      providerClaimingDesc: 'When paused, providers cannot unlock customer contact details.',
+      exclusiveBuyout: 'Exclusive buyout',
+      exclusiveBuyoutDesc: 'When off, provider claim pages hide Exclusive, and the backend rejects exclusive claims.',
+      dispatchChannel: 'Dispatch channel',
+      dispatchChannelDesc: 'Controls whether new dispatches use Email or SMS.',
+      pauseRequests: 'Pause requests',
+      enableRequests: 'Enable requests',
+      pauseDispatch: 'Pause dispatch',
+      enableDispatch: 'Enable dispatch',
+      pauseClaiming: 'Pause claiming',
+      enableClaiming: 'Enable claiming',
+      disableExclusive: 'Disable exclusive',
+      enableExclusive: 'Enable exclusive',
+      saving: 'Saving...',
+      settingsUpdated: 'Settings updated.',
+      dispatchOverview: 'Dispatch queue overview',
+      loadingDispatchQueue: 'Loading dispatch queue...',
+      pendingDispatchLeads: 'Pending dispatch leads',
+      pendingEmail: 'Pending Email',
+      pendingSms: 'Pending SMS',
+      failedSends: 'Failed sends',
+      sentTotal: 'Sent total',
+      dispatchOverviewNote: 'After clicking Dispatch pending leads, check whether pending dispatch / pending sends remain here.',
+      providersTotal: 'Providers total',
+      providersPending: 'Pending providers',
+      leadsTotal: 'Leads total',
+      claimsTotal: 'Claims total',
+      today: 'Today',
+      thisMonth: 'This month',
+      todayNew: 'Today new',
+      monthNew: 'Month new',
+      business: 'Business',
+      contact: 'Contact',
+      email: 'Email',
+      phone: 'Phone',
+      emailNotifications: 'Email notifications',
+      smsNotifications: 'SMS notifications',
+      subscribed: 'Subscribed',
+      unsubscribed: 'Unsubscribed',
+      resubscribed: 'Resubscribed',
+      optedIn: 'Opted in',
+      optedOut: 'Opted out',
+      status: 'Status',
+      created: 'Created',
+      actions: 'Actions',
+      lead: 'Lead',
+      customer: 'Customer',
+      job: 'Job',
+      shared: 'Shared',
+      time: 'Time',
+      access: 'Access',
+      provider: 'Provider',
+      approve: 'Approve',
+      activate: 'Activate',
+      suspend: 'Suspend',
+      publish: 'Publish',
+      queue: 'Queue',
+      expire: 'Expire',
+      approved: 'approved',
+      pending: 'pending',
+      active: 'active',
+      inactive: 'inactive',
+      sharedAccess: 'shared',
+      exclusiveAccess: 'exclusive',
+      dispatch: 'Dispatch',
+      notCreated: 'not created',
+      total: 'total',
+      sent: 'sent',
+      failed: 'failed',
+      skipped: 'skipped',
+      statusMap: {
+        published: 'published',
+        queued: 'queued',
+        shared_active: 'shared active',
+        shared_full: 'shared full',
+        exclusive_claimed: 'exclusive claimed',
+        expired: 'expired',
+        rejected: 'rejected',
+        granted_free: 'granted free',
       },
-      body: body ? JSON.stringify(body) : undefined
+    },
+    zh: {
+      title: 'Clearout YYC 后台',
+      sub: '内部管理后台：管理服务商、客户需求和认领记录。不要分享后台密码。',
+      token: '后台密码',
+      tokenPlaceholder: '输入 ADMIN_TOKEN',
+      enter: '进入后台',
+      clear: '清除',
+      tokenNote: '后台密码只保存在当前浏览器的 localStorage 中。',
+      providers: '服务商',
+      leads: '客户需求',
+      claims: '认领记录',
+      refresh: '刷新',
+      loading: '加载中...',
+      enterToken: '请先输入后台密码。',
+      platformControls: '平台总控',
+      platformControlsSub: '控制客户提交、系统派单、服务商接单、独家买断和 Email / SMS 派单通道。',
+      refreshControls: '刷新总控',
+      dispatchPendingLeads: '派出积压需求',
+      dispatchingPendingLeads: '正在派出积压需求...',
+      pendingDispatchComplete: '积压派单完成',
+      checked: '检查',
+      created: '创建',
+      controlsRefreshed: '总控已刷新。当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，独家买断 OFF，派单通道 Email。',
+      recommendedDefault: '当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，独家买断 OFF，派单通道 Email。',
+      customerRequests: '客户提交',
+      customerRequestsDesc: '关闭后，客户不能提交新的清运需求。',
+      leadDispatch: '系统派单',
+      leadDispatchDesc: '关闭后，客户需求仍可进入后台，但不会发送给服务商。',
+      providerClaiming: '服务商接单',
+      providerClaimingDesc: '关闭后，服务商不能领取客户联系方式。',
+      exclusiveBuyout: '独家买断',
+      exclusiveBuyoutDesc: '关闭后，服务商认领页面不显示独家按钮；后端也会拒绝独家认领。',
+      dispatchChannel: '派单通道',
+      dispatchChannelDesc: '控制新派单使用 Email 还是 SMS。',
+      pauseRequests: '暂停提交',
+      enableRequests: '允许提交',
+      pauseDispatch: '暂停派单',
+      enableDispatch: '允许派单',
+      pauseClaiming: '暂停接单',
+      enableClaiming: '允许接单',
+      disableExclusive: '关闭独家买断',
+      enableExclusive: '开启独家买断',
+      saving: '正在保存...',
+      settingsUpdated: '设置已更新。',
+      dispatchOverview: '派单队列总览',
+      loadingDispatchQueue: '正在加载派单队列...',
+      pendingDispatchLeads: '待派单需求',
+      pendingEmail: '待发送 Email',
+      pendingSms: '待发送 SMS',
+      failedSends: '发送失败',
+      sentTotal: '已发送总数',
+      dispatchOverviewNote: '点击“派出积压需求”后，看这里是否还有待派单 / 待发送。',
+      providersTotal: '服务商总数',
+      providersPending: '待审核服务商',
+      leadsTotal: '客户需求总数',
+      claimsTotal: '认领总数',
+      today: '今日',
+      thisMonth: '本月',
+      todayNew: '今日新增',
+      monthNew: '本月新增',
+      business: '商家名称',
+      contact: '联系人',
+      email: '邮箱',
+      phone: '电话',
+      emailNotifications: '邮件通知',
+      smsNotifications: '短信通知',
+      subscribed: '已订阅',
+      unsubscribed: '已退订',
+      resubscribed: '重新订阅',
+      optedIn: '已开启',
+      optedOut: '已关闭',
+      status: '状态',
+      created: '创建时间',
+      actions: '操作',
+      lead: '需求',
+      customer: '客户',
+      job: '任务',
+      shared: '共享名额',
+      time: '时间',
+      access: '认领类型',
+      provider: '服务商',
+      approve: '批准',
+      activate: '启用',
+      suspend: '暂停',
+      publish: '发布',
+      queue: '排队',
+      expire: '过期',
+      approved: '已批准',
+      pending: '待审核',
+      active: '启用',
+      inactive: '停用',
+      sharedAccess: '共享',
+      exclusiveAccess: '独家',
+      dispatch: '派单',
+      notCreated: '未创建',
+      total: '总数',
+      sent: '已发送',
+      failed: '失败',
+      skipped: '跳过',
+      statusMap: {
+        published: '已发布',
+        queued: '排队中',
+        shared_active: '共享中',
+        shared_full: '共享已满',
+        exclusive_claimed: '独家已认领',
+        expired: '已过期',
+        rejected: '已拒绝',
+        granted_free: '已授权',
+      },
+    },
+  }
+
+  const $ = (id) => document.getElementById(id)
+  const t = (key) => text[state.lang][key] || key
+  const statusText = (status) => text[state.lang].statusMap[status] || status || ''
+
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[char])
+  }
+
+  function badge(label, cls = '') {
+    return '<span class="pill ' + esc(cls) + '">' + esc(label) + '</span>'
+  }
+
+  function setMessage(message, error = false) {
+    $('message').innerHTML = message ? '<p class="' + (error ? 'error' : 'muted') + '">' + esc(message) + '</p>' : ''
+  }
+
+  function formatDate(value) {
+    const d = value ? new Date(value) : null
+    if (!d || Number.isNaN(d.getTime())) return ''
+    return d.toLocaleString()
+  }
+
+  function statCard(label, value, todayLabel, todayValue, monthLabel, monthValue) {
+    return [
+      '<div class="card stat">',
+      '<b>' + esc(value || 0) + '</b>',
+      '<span>' + esc(label) + '</span>',
+      '<div class="stat-subline">',
+      '<span>' + esc(todayLabel) + ' ' + esc(todayValue || 0) + '</span>',
+      '<span>' + esc(monthLabel) + ' ' + esc(monthValue || 0) + '</span>',
+      '</div>',
+      '</div>',
+    ].join('')
+  }
+
+  function dispatchSummaryHtml(info) {
+    const total = Number(info?.total || 0)
+    const email = Number(info?.email || 0)
+    const sms = Number(info?.sms || 0)
+    const sent = Number(info?.sent || 0)
+    const pending = Number(info?.pending || 0)
+    const failed = Number(info?.failed || 0)
+    const skipped = Number(info?.skipped || 0)
+
+    if (!total) {
+      return '<span class="dispatch-badge bad">' + esc(t('dispatch') + ': ' + t('notCreated')) + '</span>'
+    }
+
+    const channel = sms > 0 && email === 0 ? 'sms' : email > 0 && sms === 0 ? 'email' : 'mixed'
+    const parts = [t('dispatch') + ': ' + channel, t('total') + ' ' + total]
+    if (sent) parts.push(t('sent') + ' ' + sent)
+    if (pending) parts.push(t('pending') + ' ' + pending)
+    if (failed) parts.push(t('failed') + ' ' + failed)
+    if (skipped) parts.push(t('skipped') + ' ' + skipped)
+
+    let cls = 'ok'
+    if (failed) cls = 'bad'
+    else if (pending || skipped) cls = 'mid'
+
+    return '<span class="dispatch-badge ' + cls + '">' + esc(parts.join(' · ')) + '</span>'
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      cache: 'no-store',
+      headers: {
+        'content-type': 'application/json',
+        'x-admin-token': state.token,
+        ...(options.headers || {}),
+      },
     })
 
-    const text = await response.text()
-    let data = null
-    try { data = text ? JSON.parse(text) : null } catch { data = text }
-
-    if (!response.ok) {
-      throw new Error((data && data.error) || text || 'Failed to load platform settings.')
-    }
-
+    const data = await response.json().catch(() => null)
+    if (!response.ok) throw new Error(data?.error || 'Request failed: ' + response.status)
     return data
   }
 
-  function controlButton(label, onclick, active) {
-    return '<button class="' + (active ? '' : 'secondary') + '" onclick="' + onclick + '">' + label + '</button>'
+  function applyLang() {
+    document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en'
+    document.title = t('title')
+    $('pageTitle').textContent = t('title')
+    $('pageSub').textContent = t('sub')
+    $('loginTitle').textContent = t('token')
+    $('tokenInput').placeholder = t('tokenPlaceholder')
+    $('enterBtn').textContent = t('enter')
+    $('clearBtn').textContent = t('clear')
+    $('tokenNote').textContent = t('tokenNote')
+    $('tab-providers').textContent = t('providers')
+    $('tab-leads').textContent = t('leads')
+    $('tab-claims').textContent = t('claims')
+    $('refreshBtn').textContent = t('refresh')
+    $('platformControlsTitle').textContent = t('platformControls')
+    $('platformControlsSub').textContent = t('platformControlsSub')
+    $('platformControlsRefresh').textContent = t('refreshControls')
+    $('dispatchPendingLeadsBtn').textContent = t('dispatchPendingLeads')
+    $('lang-en').classList.toggle('active', state.lang === 'en')
+    $('lang-zh').classList.toggle('active', state.lang === 'zh')
+  }
+
+  function setLang(next) {
+    state.lang = next
+    localStorage.setItem(storageKeys.lang, next)
+    applyLang()
+    if ($('app').style.display !== 'none') loadAll()
+  }
+
+  function showTab(tab) {
+    state.currentTab = tab
+    for (const id of ['providers', 'leads', 'claims']) {
+      $('tab-' + id).classList.toggle('active', id === tab)
+      $(id + 'Panel').style.display = id === tab ? 'block' : 'none'
+    }
+  }
+
+  async function loadAll() {
+    try {
+      if (!state.token) throw new Error(t('enterToken'))
+      setMessage(t('loading'))
+      $('loginBox').style.display = 'none'
+      $('app').style.display = 'block'
+      await Promise.all([
+        loadSummary(),
+        loadProviders(),
+        loadLeads(),
+        loadClaims(),
+        loadPlatformControls(),
+        loadDispatchOverview(),
+      ])
+      showTab(state.currentTab)
+      setMessage('')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e), true)
+      $('loginBox').style.display = 'grid'
+      $('app').style.display = 'none'
+    }
+  }
+
+  async function loadSummary() {
+    const { summary } = await api('/api/admin?resource=summary&_=' + Date.now())
+    $('stats').innerHTML = [
+      statCard(t('providersTotal'), summary.providers_total, t('todayNew'), summary.providers_today, t('monthNew'), summary.providers_month),
+      statCard(t('providersPending'), summary.providers_pending, t('today'), summary.providers_pending_today, t('thisMonth'), summary.providers_pending_month),
+      statCard(t('leadsTotal'), summary.leads_total, t('todayNew'), summary.leads_today, t('monthNew'), summary.leads_month),
+      statCard(t('claimsTotal'), summary.claims_total, t('today'), summary.claims_today, t('thisMonth'), summary.claims_month),
+    ].join('')
+  }
+
+  function controlButton(label, handlerName, value, active) {
+    return '<button type="button" class="' + (active ? '' : 'secondary') + '" data-control="' + esc(handlerName) + '" data-value="' + esc(String(value)) + '">' + esc(label) + '</button>'
   }
 
   function statusPill(value, kind) {
     const cls = value === true ? 'on' : value === false ? 'off' : kind
-    const text = value === true ? 'ON' : value === false ? 'OFF' : String(value || '').toUpperCase()
-    return '<span class="control-status ' + cls + '">' + text + '</span>'
+    const label = value === true ? 'ON' : value === false ? 'OFF' : String(value || '').toUpperCase()
+    return '<span class="control-status ' + esc(cls || '') + '">' + esc(label) + '</span>'
   }
 
   function renderPlatformControls(settings) {
-    const box = document.getElementById('platformControls')
-    const grid = document.getElementById('platformControlsGrid')
-    const msg = document.getElementById('platformControlsMessage')
-    const title = document.getElementById('platformControlsTitle')
-    const sub = document.getElementById('platformControlsSub')
-    const refresh = document.getElementById('platformControlsRefresh')
-
-    if (!box || !grid) return
-
-    box.style.display = 'block'
-    title.textContent = t('平台总控', 'Platform controls')
-    sub.textContent = t('控制客户提交、系统派单、服务商接单，以及 Email / SMS 派单通道。', 'Control customer submissions, dispatch, claims, and Email / SMS dispatch channel.')
-    refresh.textContent = t('刷新总控', 'Refresh controls')
-    const pendingBtn = document.getElementById('dispatchPendingLeadsBtn')
-    if (pendingBtn) pendingBtn.textContent = t('派出积压需求', 'Dispatch pending leads')
+    state.settings = settings
+    $('platformControls').style.display = 'block'
 
     const customerOn = !!settings.customer_requests_enabled
     const dispatchOn = !!settings.lead_dispatch_enabled
     const claimsOn = !!settings.provider_claims_enabled
+    const exclusiveOn = !!settings.exclusive_claims_enabled
     const channel = settings.lead_dispatch_channel === 'sms' ? 'sms' : 'email'
 
-    grid.innerHTML = [
+    const cards = [
       {
-        title: t('客户提交', 'Customer requests'),
-        desc: t('关闭后，客户不能提交新的清运需求。', 'When paused, customers cannot submit new requests.'),
+        key: 'customer_requests_enabled',
+        title: t('customerRequests'),
+        desc: t('customerRequestsDesc'),
         status: statusPill(customerOn),
-        buttons: controlButton(customerOn ? t('暂停提交', 'Pause requests') : t('允许提交', 'Enable requests'), "updatePlatformControl('customer_requests_enabled'," + (!customerOn) + ")", customerOn)
+        buttons: controlButton(customerOn ? t('pauseRequests') : t('enableRequests'), 'customer_requests_enabled', !customerOn, customerOn),
       },
       {
-        title: t('系统派单', 'Lead dispatch'),
-        desc: t('关闭后，客户需求仍可进入后台，但不会发给服务商。', 'When paused, leads can enter admin but will not be sent to providers.'),
+        key: 'lead_dispatch_enabled',
+        title: t('leadDispatch'),
+        desc: t('leadDispatchDesc'),
         status: statusPill(dispatchOn),
-        buttons: controlButton(dispatchOn ? t('暂停派单', 'Pause dispatch') : t('允许派单', 'Enable dispatch'), "updatePlatformControl('lead_dispatch_enabled'," + (!dispatchOn) + ")", dispatchOn)
+        buttons: controlButton(dispatchOn ? t('pauseDispatch') : t('enableDispatch'), 'lead_dispatch_enabled', !dispatchOn, dispatchOn),
       },
       {
-        title: t('服务商接单', 'Provider claiming'),
-        desc: t('关闭后，服务商不能领取客户联系方式。', 'When paused, providers cannot unlock customer contact details.'),
+        key: 'provider_claims_enabled',
+        title: t('providerClaiming'),
+        desc: t('providerClaimingDesc'),
         status: statusPill(claimsOn),
-        buttons: controlButton(claimsOn ? t('暂停接单', 'Pause claiming') : t('允许接单', 'Enable claiming'), "updatePlatformControl('provider_claims_enabled'," + (!claimsOn) + ")", claimsOn)
+        buttons: controlButton(claimsOn ? t('pauseClaiming') : t('enableClaiming'), 'provider_claims_enabled', !claimsOn, claimsOn),
       },
       {
-        title: t('派单通道', 'Dispatch channel'),
-        desc: t('控制新派单使用 Email 还是 SMS。', 'Controls whether new dispatches use Email or SMS.'),
+        key: 'exclusive_claims_enabled',
+        title: t('exclusiveBuyout'),
+        desc: t('exclusiveBuyoutDesc'),
+        status: statusPill(exclusiveOn),
+        buttons: controlButton(exclusiveOn ? t('disableExclusive') : t('enableExclusive'), 'exclusive_claims_enabled', !exclusiveOn, exclusiveOn),
+      },
+      {
+        key: 'lead_dispatch_channel',
+        title: t('dispatchChannel'),
+        desc: t('dispatchChannelDesc'),
         status: statusPill(channel, channel),
         buttons:
-          controlButton('Email', "updatePlatformControl('lead_dispatch_channel','email')", channel === 'email') +
-          controlButton('SMS', "updatePlatformControl('lead_dispatch_channel','sms')", channel === 'sms')
-      }
-    ].map(item => (
-      '<div class="control-card">' +
-        '<div class="control-row" style="justify-content:space-between">' +
-          '<h3>' + item.title + '</h3>' +
-          item.status +
-        '</div>' +
-        '<p>' + item.desc + '</p>' +
-        '<div class="control-row">' + item.buttons + '</div>' +
-      '</div>'
-    )).join('')
-
-    if (msg) msg.textContent = t('当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，派单通道 Email。', 'Recommended default: requests ON, dispatch ON, claiming ON, channel Email.')
-  }
-
-  window.loadPlatformControls = async function () {
-    const msg = document.getElementById('platformControlsMessage')
-    try {
-      if (msg) msg.textContent = t('正在刷新总控…', 'Refreshing controls...')
-      const data = await fetchPlatformSettings('GET')
-      renderPlatformControls(data.settings || {})
-      if (msg) msg.textContent = t(
-        '总控已刷新。当前默认建议：客户提交 ON，系统派单 ON，服务商接单 ON，派单通道 Email。',
-        'Controls refreshed. Recommended default: requests ON, dispatch ON, claiming ON, channel Email.'
-      )
-    } catch (e) {
-      const box = document.getElementById('platformControls')
-      if (box) box.style.display = 'block'
-      if (msg) msg.textContent = e instanceof Error ? e.message : 'Failed to load platform controls.'
-    }
-  }
-
-
-  window.dispatchPendingLeads = async function () {
-    const msg = document.getElementById('platformControlsMessage')
-    const btn = document.getElementById('dispatchPendingLeadsBtn')
-
-    try {
-      if (btn) btn.disabled = true
-      if (msg) msg.textContent = t('正在派出积压需求…', 'Dispatching pending leads...')
-
-      const token = getAdminTokenForPlatformControls()
-      if (!token) throw new Error('Missing ADMIN_TOKEN.')
-
-      const response = await fetch('/api/admin?resource=dispatch&action=pending', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-token': token
-        },
-        body: JSON.stringify({ limit: 50 })
-      })
-
-      const text = await response.text()
-      let data = null
-      try { data = text ? JSON.parse(text) : null } catch { data = text }
-
-      if (!response.ok) {
-        throw new Error((data && data.error) || text || 'Dispatch pending leads failed.')
-      }
-
-      const result = data.result || {}
-      const checked = result.checked ?? 0
-      const created = result.created ?? 0
-
-      if (msg) {
-        msg.textContent = t(
-          '积压派单完成：检查 ' + checked + ' 条需求，创建 ' + created + ' 条通知。',
-          'Pending dispatch complete: checked ' + checked + ' leads, created ' + created + ' notifications.'
-        )
-      }
-
-      try { await window.loadPlatformControls() } catch {}
-      try { if (typeof window.loadAll === 'function') await window.loadAll() } catch {}
-    } catch (e) {
-      if (msg) msg.textContent = e instanceof Error ? e.message : 'Dispatch pending leads failed.'
-    } finally {
-      if (btn) btn.disabled = false
-    }
-  }
-
-  window.updatePlatformControl = async function (key, value) {
-    const msg = document.getElementById('platformControlsMessage')
-    try {
-      if (msg) msg.textContent = t('正在保存…', 'Saving...')
-      const data = await fetchPlatformSettings('POST', { key, value })
-      renderPlatformControls(data.settings || {})
-      if (msg) msg.textContent = t('设置已更新。', 'Settings updated.')
-    } catch (e) {
-      if (msg) msg.textContent = e instanceof Error ? e.message : 'Failed to update setting.'
-    }
-  }
-
-  const previousLoadAll = window.loadAll
-  if (typeof previousLoadAll === 'function') {
-    window.loadAll = async function () {
-      const result = await previousLoadAll.apply(this, arguments)
-      try { await window.loadPlatformControls() } catch {}
-      return result
-    }
-  }
-
-  const previousSetLang = window.setLang
-  if (typeof previousSetLang === 'function') {
-    window.setLang = function (lang) {
-      const result = previousSetLang.apply(this, arguments)
-      try { window.loadPlatformControls() } catch {}
-      return result
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(function () {
-      try { window.loadPlatformControls() } catch {}
-    }, 500)
-  })
-})()
-</script>
-
-
-
-
-
-
-<script id="v272-dispatch-overview">
-(function () {
-  function getToken() {
-    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
-    if (inputValue) return inputValue
-
-    const keys = [
-      'clearout_admin_token',
-      'clearoutAdminToken',
-      'admin_token',
-      'adminToken',
-      'ADMIN_TOKEN',
-      'clearout_admin'
-    ]
-
-    for (const key of keys) {
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value) return value
-    }
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i) || ''
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value && /admin/i.test(key) && /token/i.test(key)) return value
-    }
-
-    return ''
-  }
-
-  function mini(label, value, cls) {
-    return '<div class="dispatch-mini ' + (cls || '') + '"><b>' + value + '</b><span>' + label + '</span></div>'
-  }
-
-  function renderOverview(overview) {
-    const box = document.getElementById('dispatchQueueOverview')
-    if (!box) return
-
-    const n = overview.notifications || {}
-    const pendingLeads = Number(overview.pending_dispatch_leads || 0)
-
-    box.innerHTML =
-      '<b>Dispatch queue overview / 派单队列总览</b>' +
-      '<div class="dispatch-overview-grid">' +
-        mini('待派单需求', pendingLeads, pendingLeads ? 'mid' : 'ok') +
-        mini('待发送 Email', Number(n.email_pending || 0), n.email_pending ? 'mid' : 'ok') +
-        mini('待发送 SMS', Number(n.sms_pending || 0), n.sms_pending ? 'mid' : 'ok') +
-        mini('发送失败', Number((n.email_failed || 0) + (n.sms_failed || 0)), ((n.email_failed || 0) + (n.sms_failed || 0)) ? 'bad' : 'ok') +
-        mini('已发送总数', Number(n.sent || 0), 'ok') +
-      '</div>' +
-      '<div class="control-note">点击“派出积压需求”后，看这里是否还有待派单 / 待发送。</div>'
-  }
-
-  window.loadDispatchOverview = async function () {
-    const box = document.getElementById('dispatchQueueOverview')
-    const token = getToken()
-
-    if (!box || !token) return
-
-    try {
-      box.innerHTML = 'Loading dispatch queue...'
-      const response = await fetch('/api/admin?resource=dispatch-overview&_=' + Date.now(), {
-        cache: 'no-store',
-        headers: { 'x-admin-token': token }
-      })
-
-      const data = await response.json()
-      if (!response.ok || !data.ok) throw new Error(data.error || 'Failed to load dispatch overview.')
-
-      renderOverview(data.overview || {})
-    } catch (e) {
-      box.innerHTML = '<span class="error">' + (e instanceof Error ? e.message : 'Failed to load dispatch overview.') + '</span>'
-    }
-  }
-
-  const oldLoadAll = window.loadAll
-  if (typeof oldLoadAll === 'function') {
-    window.loadAll = async function () {
-      const result = await oldLoadAll.apply(this, arguments)
-      setTimeout(window.loadDispatchOverview, 300)
-      setTimeout(window.loadDispatchOverview, 1200)
-      return result
-    }
-  }
-
-  const oldLoadPlatformControls = window.loadPlatformControls
-  if (typeof oldLoadPlatformControls === 'function') {
-    window.loadPlatformControls = async function () {
-      const result = await oldLoadPlatformControls.apply(this, arguments)
-      setTimeout(window.loadDispatchOverview, 300)
-      return result
-    }
-  }
-
-  const oldDispatchPendingLeads = window.dispatchPendingLeads
-  if (typeof oldDispatchPendingLeads === 'function') {
-    window.dispatchPendingLeads = async function () {
-      const result = await oldDispatchPendingLeads.apply(this, arguments)
-      setTimeout(window.loadDispatchOverview, 500)
-      setTimeout(window.loadDispatchOverview, 1500)
-      if (typeof window.loadAll === 'function') {
-        setTimeout(window.loadAll, 1200)
-      }
-      return result
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(window.loadDispatchOverview, 800)
-    setTimeout(window.loadDispatchOverview, 2000)
-  })
-})()
-</script>
-
-
-<script id="v272-admin-top-stats-force">
-(function () {
-  function getToken() {
-    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
-    if (inputValue) return inputValue
-
-    const keys = [
-      'clearout_admin_token',
-      'clearoutAdminToken',
-      'admin_token',
-      'adminToken',
-      'ADMIN_TOKEN',
-      'clearout_admin'
-    ]
-
-    for (const key of keys) {
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value) return value
-    }
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i) || ''
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value && /admin/i.test(key) && /token/i.test(key)) return value
-    }
-
-    return ''
-  }
-
-  function esc(value) {
-    return String(value ?? '').replace(/[&<>"']/g, function (c) {
-      return ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#39;'
-      })[c]
-    })
-  }
-
-  function isZh() {
-    return document.getElementById('lang-zh')?.classList.contains('active')
-  }
-
-  function card(label, value, todayLabel, todayValue, monthLabel, monthValue) {
-    return [
-      '<div class="card stat">',
-      '<b>' + esc(value) + '</b>',
-      '<span>' + esc(label) + '</span>',
-      '<div class="stat-subline-force">',
-      '<span>' + esc(todayLabel) + ' ' + esc(todayValue) + '</span>',
-      '<span>' + esc(monthLabel) + ' ' + esc(monthValue) + '</span>',
-      '</div>',
-      '</div>'
-    ].join('')
-  }
-
-  function renderForcedStats(summary) {
-    const stats = document.getElementById('stats')
-    if (!stats) return
-
-    const zh = isZh()
-
-    const labels = zh ? {
-      providers: '服务商总数',
-      pendingProviders: '待审核服务商',
-      leads: '客户需求总数',
-      claims: '认领总数',
-      today: '今日',
-      month: '本月',
-      todayNew: '今日新增',
-      monthNew: '本月新增'
-    } : {
-      providers: 'Providers total',
-      pendingProviders: 'Pending providers',
-      leads: 'Leads total',
-      claims: 'Claims total',
-      today: 'Today',
-      month: 'This month',
-      todayNew: 'Today new',
-      monthNew: 'Month new'
-    }
-
-    stats.innerHTML = [
-      card(labels.providers, summary.providers_total || 0, labels.todayNew, summary.providers_today || 0, labels.monthNew, summary.providers_month || 0),
-      card(labels.pendingProviders, summary.providers_pending || 0, labels.today, summary.providers_pending_today || 0, labels.month, summary.providers_pending_month || 0),
-      card(labels.leads, summary.leads_total || 0, labels.todayNew, summary.leads_today || 0, labels.monthNew, summary.leads_month || 0),
-      card(labels.claims, summary.claims_total || 0, labels.today, summary.claims_today || 0, labels.month, summary.claims_month || 0)
-    ].join('')
-  }
-
-  window.forceRefreshTopStats = async function () {
-    const token = getToken()
-    if (!token) return
-
-    const response = await fetch('/api/admin?resource=summary&_=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'x-admin-token': token }
-    })
-
-    const data = await response.json()
-    if (!response.ok || !data.ok) return
-
-    renderForcedStats(data.summary || {})
-  }
-
-  function scheduleStatsRefresh() {
-    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 200)
-    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 800)
-    setTimeout(function () { try { window.forceRefreshTopStats() } catch {} }, 1800)
-  }
-
-  const oldLoadAll = window.loadAll
-  if (typeof oldLoadAll === 'function') {
-    window.loadAll = async function () {
-      const result = await oldLoadAll.apply(this, arguments)
-      scheduleStatsRefresh()
-      return result
-    }
-  }
-
-  const oldSetLang = window.setLang
-  if (typeof oldSetLang === 'function') {
-    window.setLang = function () {
-      const result = oldSetLang.apply(this, arguments)
-      scheduleStatsRefresh()
-      return result
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', scheduleStatsRefresh)
-  scheduleStatsRefresh()
-})()
-</script>
-
-
-<script id="v272-admin-i18n-cleanup">
-(function () {
-  const EN_TO_ZH = {
-    'Clearout YYC Admin': 'Clearout YYC 后台',
-    'Internal provider, lead, and claim management. Do not share your admin token.': '内部服务商、客户需求和认领管理。不要分享后台 Token。',
-    'Admin token': '后台 Token',
-    'Enter Admin': '进入后台',
-    'Clear': '清除',
-    "Token is stored only in this browser's localStorage.": 'Token 只保存在当前浏览器的 localStorage。',
-
-    'Providers': '服务商',
-    'Leads': '客户需求',
-    'Claims': '认领',
-    'Refresh': '刷新',
-
-    'Platform controls': '平台总控',
-    'Control customer submissions, dispatch, claims, and dispatch channel.': '控制客户提交、系统派单、服务商接单和派单通道。',
-    'Refresh controls': '刷新总控',
-    'Dispatch pending leads': '派出积压需求',
-
-    'Customer requests': '客户提交',
-    'Lead dispatch': '系统派单',
-    'Provider claiming': '服务商接单',
-    'Dispatch channel': '派单通道',
-
-    'When paused, customers cannot submit new requests.': '关闭后，客户不能提交新的清运需求。',
-    'When paused, leads can enter admin but will not be sent to providers.': '关闭后，客户需求仍可进入后台，但不会发送给服务商。',
-    'When paused, providers cannot unlock customer contact details.': '关闭后，服务商不能领取客户联系方式。',
-    'Controls whether new dispatches use Email or SMS.': '控制新派单使用 Email 还是 SMS。',
-
-    'Pause requests': '暂停提交',
-    'Enable requests': '允许提交',
-    'Pause dispatch': '暂停派单',
-    'Enable dispatch': '允许派单',
-    'Pause claiming': '暂停接单',
-    'Enable claiming': '允许接单',
-
-    'Dispatch queue overview / 派单队列总览': '派单队列总览',
-    'Loading dispatch queue...': '正在加载派单队列...',
-    'Pending dispatch complete:': '积压派单完成：',
-
-    'Providers total': '服务商总数',
-    'Pending providers': '待审核服务商',
-    'Leads total': '客户需求总数',
-    'Claims total': '认领总数',
-    'Today': '今日',
-    'This month': '本月',
-    'Today new': '今日新增',
-    'Month new': '本月新增',
-
-    'Business': '商家',
-    'Provider': '服务商',
-    'Contact': '联系人',
-    'Phone': '电话',
-    'Status': '状态',
-    'Notify': '通知',
-    'Lifecycle Email': '生命周期邮件',
-    'Actions': '操作',
-    'Customer': '客户',
-    'Request': '需求',
-    'Area': '区域',
-    'Service': '服务',
-    'Timeline': '时间',
-    'Created': '创建时间',
-    'Lead': '客户需求',
-    'Access': '认领类型',
-    'Claim': '认领',
-
-    'Approve': '批准',
-    'Suspend': '暂停',
-    'Activate': '启用',
-    'Deactivate': '停用',
-    'Publish': '发布',
-    'Expire': '过期',
-    'Queue': '排队',
-
-    'approved': '已批准',
-    'submitted': '已提交',
-    'active': '启用',
-    'inactive': '停用',
-    'published': '已发布',
-    'queued': '排队',
-    'expired': '已过期',
-    'shared_active': '共享中',
-    'exclusive_claimed': '独家已认领',
-    'pending': '待处理',
-    'sent': '已发送',
-    'failed': '失败',
-    'skipped': '已跳过',
-
-    'not created': '未创建',
-    'total': '总数',
-    'sent': '已发送',
-    'failed': '失败',
-    'skipped': '跳过'
-  }
-
-  const ZH_TO_EN = Object.fromEntries(
-    Object.entries(EN_TO_ZH).map(([en, zh]) => [zh, en])
-  )
-
-  function isZh() {
-    return document.getElementById('lang-zh')?.classList.contains('active')
-  }
-
-  function translateDispatchText(text, zh) {
-    let out = String(text || '')
-
-    if (zh) {
-      out = out
-        .replace(/^Dispatch:\s*/i, '派单：')
-        .replace(/\bnot created\b/g, '未创建')
-        .replace(/\btotal\b/g, '总数')
-        .replace(/\bsent\b/g, '已发送')
-        .replace(/\bpending\b/g, '待发送')
-        .replace(/\bfailed\b/g, '失败')
-        .replace(/\bskipped\b/g, '跳过')
-    } else {
-      out = out
-        .replace(/^派单：/, 'Dispatch: ')
-        .replace(/未创建/g, 'not created')
-        .replace(/总数/g, 'total')
-        .replace(/已发送/g, 'sent')
-        .replace(/待发送/g, 'pending')
-        .replace(/失败/g, 'failed')
-        .replace(/跳过/g, 'skipped')
-    }
-
-    return out
-  }
-
-  function translateTextNode(node, zh) {
-    const raw = node.nodeValue || ''
-    const trimmed = raw.trim()
-    if (!trimmed) return
-
-    const map = zh ? EN_TO_ZH : ZH_TO_EN
-
-    if (trimmed.startsWith('Dispatch:') || trimmed.startsWith('派单：')) {
-      node.nodeValue = raw.replace(trimmed, translateDispatchText(trimmed, zh))
-      return
-    }
-
-    if (map[trimmed]) {
-      node.nodeValue = raw.replace(trimmed, map[trimmed])
-    }
-  }
-
-  function translateDom(root) {
-    const zh = isZh()
-
-    const tokenInput = document.getElementById('tokenInput')
-    if (tokenInput) {
-      tokenInput.setAttribute('placeholder', zh ? '输入 ADMIN_TOKEN' : 'Enter ADMIN_TOKEN')
-    }
-
-    const walker = document.createTreeWalker(
-      root || document.body,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode(node) {
-          const parent = node.parentElement
-          if (!parent) return NodeFilter.FILTER_REJECT
-
-          const tag = parent.tagName
-          if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION'].includes(tag)) {
-            return NodeFilter.FILTER_REJECT
-          }
-
-          return NodeFilter.FILTER_ACCEPT
-        }
-      }
-    )
-
-    const nodes = []
-    while (walker.nextNode()) nodes.push(walker.currentNode)
-    nodes.forEach(node => translateTextNode(node, zh))
-
-    document.querySelectorAll('.dispatch-native, .dispatch-summary, .dispatch-summary-fixed').forEach(el => {
-      el.textContent = translateDispatchText(el.textContent || '', zh)
-    })
-  }
-
-  window.applyAdminI18nCleanup = function () {
-    translateDom(document.body)
-  }
-
-  function scheduleI18n() {
-    setTimeout(window.applyAdminI18nCleanup, 50)
-    setTimeout(window.applyAdminI18nCleanup, 300)
-    setTimeout(window.applyAdminI18nCleanup, 900)
-    setTimeout(window.applyAdminI18nCleanup, 1800)
-  }
-
-  const oldSetLang = window.setLang
-  if (typeof oldSetLang === 'function') {
-    window.setLang = function () {
-      const result = oldSetLang.apply(this, arguments)
-      scheduleI18n()
-      return result
-    }
-  }
-
-  const oldLoadAll = window.loadAll
-  if (typeof oldLoadAll === 'function') {
-    window.loadAll = async function () {
-      const result = await oldLoadAll.apply(this, arguments)
-      scheduleI18n()
-      return result
-    }
-  }
-
-  const oldShowTab = window.showTab
-  if (typeof oldShowTab === 'function') {
-    window.showTab = function () {
-      const result = oldShowTab.apply(this, arguments)
-      scheduleI18n()
-      return result
-    }
-  }
-
-  const observer = new MutationObserver(function () {
-    clearTimeout(window.__adminI18nCleanupTimer)
-    window.__adminI18nCleanupTimer = setTimeout(window.applyAdminI18nCleanup, 120)
-  })
-
-  document.addEventListener('DOMContentLoaded', function () {
-    try {
-      observer.observe(document.body, { childList: true, subtree: true })
-    } catch {}
-    scheduleI18n()
-  })
-
-  scheduleI18n()
-})()
-</script>
-
-
-<script id="v272-exclusive-claims-control">
-(function () {
-  function getToken() {
-    const inputValue = (document.getElementById('tokenInput')?.value || '').trim()
-    if (inputValue) return inputValue
-
-    const keys = ['clearout_admin_token', 'clearoutAdminToken', 'admin_token', 'adminToken', 'ADMIN_TOKEN', 'clearout_admin']
-    for (const key of keys) {
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value) return value
-    }
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i) || ''
-      const value = (localStorage.getItem(key) || '').trim()
-      if (value && /admin/i.test(key) && /token/i.test(key)) return value
-    }
-
-    return ''
-  }
-
-  function isZh() {
-    return document.getElementById('lang-zh')?.classList.contains('active')
-  }
-
-  async function fetchSettings() {
-    const token = getToken()
-    if (!token) return null
-
-    const response = await fetch('/api/admin?resource=settings&_=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'x-admin-token': token }
-    })
-
-    const data = await response.json().catch(() => ({}))
-    if (!response.ok || !data.ok) return null
-    return data.settings || {}
-  }
-
-  async function updateExclusiveClaims(value) {
-    const token = getToken()
-    if (!token) return
-
-    await fetch('/api/admin?resource=settings&action=update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': token
+          controlButton('Email', 'lead_dispatch_channel', 'email', channel === 'email') +
+          controlButton('SMS', 'lead_dispatch_channel', 'sms', channel === 'sms'),
       },
-      body: JSON.stringify({
-        key: 'exclusive_claims_enabled',
-        value: Boolean(value)
-      })
+    ]
+
+    $('platformControlsGrid').innerHTML = cards.map((item) => [
+      '<div class="control-card">',
+      '<div class="control-row" style="justify-content:space-between">',
+      '<h3>' + esc(item.title) + '</h3>',
+      item.status,
+      '</div>',
+      '<p>' + esc(item.desc) + '</p>',
+      '<div class="control-row">' + item.buttons + '</div>',
+      '</div>',
+    ].join('')).join('')
+
+    $('platformControlsMessage').textContent = t('recommendedDefault')
+  }
+
+  async function loadPlatformControls() {
+    const { settings } = await api('/api/admin?resource=settings&_=' + Date.now())
+    renderPlatformControls(settings || {})
+  }
+
+  async function updatePlatformControl(key, value) {
+    $('platformControlsMessage').textContent = t('saving')
+    const { settings } = await api('/api/admin?resource=settings&action=update', {
+      method: 'POST',
+      body: JSON.stringify({ key, value }),
     })
-
-    setTimeout(window.loadExclusiveClaimsControl, 200)
-    setTimeout(window.loadExclusiveClaimsControl, 800)
+    renderPlatformControls(settings || {})
+    $('platformControlsMessage').textContent = t('settingsUpdated')
+    await Promise.all([loadLeads(), loadDispatchOverview()]).catch(() => {})
   }
 
-  function ensureBox() {
-    let box = document.getElementById('exclusiveClaimsControl')
-    if (box) return box
-
-    const anchor = document.getElementById('platformControlsMessage')
-    if (!anchor || !anchor.parentElement) return null
-
-    box = document.createElement('div')
-    box.id = 'exclusiveClaimsControl'
-    box.className = 'exclusive-claims-control'
-    anchor.parentElement.appendChild(box)
-    return box
+  function dispatchMini(label, value, cls) {
+    return '<div class="dispatch-mini ' + (cls || '') + '"><b>' + esc(value || 0) + '</b><span>' + esc(label) + '</span></div>'
   }
 
-  function render(settings) {
-    const box = ensureBox()
-    if (!box) return
-
-    const zh = isZh()
-    const enabled = Boolean(settings.exclusive_claims_enabled)
+  async function loadDispatchOverview() {
+    const box = $('dispatchQueueOverview')
+    box.textContent = t('loadingDispatchQueue')
+    const { overview } = await api('/api/admin?resource=dispatch-overview&_=' + Date.now())
+    const notifications = overview?.notifications || {}
+    const pendingLeads = Number(overview?.pending_dispatch_leads || 0)
+    const emailPending = Number(notifications.email_pending || 0)
+    const smsPending = Number(notifications.sms_pending || 0)
+    const failed = Number(notifications.email_failed || 0) + Number(notifications.sms_failed || 0)
+    const sent = Number(notifications.sent || 0)
 
     box.innerHTML = [
-      '<div class="exclusive-claims-control-head">',
-        '<div>',
-          '<h3 style="margin:0;font-size:20px;">' + (zh ? '独家买断' : 'Exclusive buyout') + '</h3>',
-          '<p>' + (zh
-            ? '关闭后，服务商认领页面不显示 Exclusive 按钮；后端也会拒绝独家认领。'
-            : 'When off, provider claim pages hide the Exclusive button, and the backend rejects exclusive claims.'
-          ) + '</p>',
-        '</div>',
-        '<span class="exclusive-claims-badge ' + (enabled ? 'on' : 'off') + '">' + (enabled ? 'ON' : 'OFF') + '</span>',
+      '<b>' + esc(t('dispatchOverview')) + '</b>',
+      '<div class="dispatch-overview-grid">',
+      dispatchMini(t('pendingDispatchLeads'), pendingLeads, pendingLeads ? 'mid' : 'ok'),
+      dispatchMini(t('pendingEmail'), emailPending, emailPending ? 'mid' : 'ok'),
+      dispatchMini(t('pendingSms'), smsPending, smsPending ? 'mid' : 'ok'),
+      dispatchMini(t('failedSends'), failed, failed ? 'bad' : 'ok'),
+      dispatchMini(t('sentTotal'), sent, 'ok'),
       '</div>',
-      '<div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">',
-        '<button class="danger" onclick="window.setExclusiveClaimsEnabled(false)">' + (zh ? '关闭独家买断' : 'Disable exclusive') + '</button>',
-        '<button class="secondary" onclick="window.setExclusiveClaimsEnabled(true)">' + (zh ? '开启独家买断' : 'Enable exclusive') + '</button>',
-      '</div>'
+      '<div class="control-note">' + esc(t('dispatchOverviewNote')) + '</div>',
     ].join('')
   }
 
-  window.setExclusiveClaimsEnabled = updateExclusiveClaims
-
-  window.loadExclusiveClaimsControl = async function () {
-    const settings = await fetchSettings()
-    if (!settings) return
-    render(settings)
-  }
-
-  function schedule() {
-    setTimeout(window.loadExclusiveClaimsControl, 300)
-    setTimeout(window.loadExclusiveClaimsControl, 1200)
-  }
-
-  const oldLoadPlatformControls = window.loadPlatformControls
-  if (typeof oldLoadPlatformControls === 'function') {
-    window.loadPlatformControls = async function () {
-      const result = await oldLoadPlatformControls.apply(this, arguments)
-      schedule()
-      return result
+  async function dispatchPendingLeads() {
+    const button = $('dispatchPendingLeadsBtn')
+    try {
+      button.disabled = true
+      $('platformControlsMessage').textContent = t('dispatchingPendingLeads')
+      const data = await api('/api/admin?resource=dispatch&action=pending', {
+        method: 'POST',
+        body: JSON.stringify({ limit: 50 }),
+      })
+      const result = data.result || {}
+      $('platformControlsMessage').textContent = t('pendingDispatchComplete') + ': ' + t('checked') + ' ' + (result.checked || 0) + ', ' + t('created') + ' ' + (result.created || 0) + '.'
+      await Promise.all([loadLeads(), loadDispatchOverview(), loadSummary()]).catch(() => {})
+    } catch (e) {
+      $('platformControlsMessage').textContent = e instanceof Error ? e.message : 'Dispatch pending leads failed.'
+    } finally {
+      button.disabled = false
     }
   }
 
-  const oldSetLang = window.setLang
-  if (typeof oldSetLang === 'function') {
-    window.setLang = function () {
-      const result = oldSetLang.apply(this, arguments)
-      schedule()
-      return result
-    }
+  async function providerAction(providerId, action) {
+    await api('/api/admin?resource=provider&action=update', {
+      method: 'POST',
+      body: JSON.stringify({ provider_id: providerId, action }),
+    })
+    await loadAll()
   }
 
-  document.addEventListener('DOMContentLoaded', schedule)
-  schedule()
+  async function leadAction(leadId, action) {
+    await api('/api/admin?resource=lead&action=update', {
+      method: 'POST',
+      body: JSON.stringify({ lead_id: leadId, action }),
+    })
+    await loadAll()
+  }
+
+  async function loadProviders() {
+    const { providers } = await api('/api/admin?resource=providers&_=' + Date.now())
+    $('providersPanel').innerHTML = [
+      '<h2>' + esc(t('providers')) + '</h2>',
+      '<div class="scroll"><table>',
+      '<thead><tr>',
+      '<th>' + esc(t('business')) + '</th>',
+      '<th>' + esc(t('contact')) + '</th>',
+      '<th>' + esc(t('email')) + '</th>',
+      '<th>' + esc(t('phone')) + '</th>',
+      '<th>' + esc(t('emailNotifications')) + '</th>',
+      '<th>' + esc(t('smsNotifications')) + '</th>',
+      '<th>' + esc(t('status')) + '</th>',
+      '<th>' + esc(t('created')) + '</th>',
+      '<th>' + esc(t('actions')) + '</th>',
+      '</tr></thead><tbody>',
+      providers.map((provider) => [
+        '<tr>',
+        '<td><b>' + esc(provider.business_name) + '</b><br><span class="muted">' + esc(provider.public_id) + '</span></td>',
+        '<td>' + esc(provider.contact_name) + '</td>',
+        '<td>' + esc(provider.email) + '</td>',
+        '<td>' + esc(provider.phone) + '</td>',
+        '<td>',
+        provider.notify_by_email === false ? badge(t('unsubscribed'), 'bad') : (provider.email_resubscribed_at ? badge(t('resubscribed'), 'ok') : badge(t('subscribed'), 'ok')),
+        provider.email_unsubscribed_at ? '<br><span class="muted">Off: ' + esc(formatDate(provider.email_unsubscribed_at)) + '</span>' : '',
+        provider.email_resubscribed_at ? '<br><span class="muted">On: ' + esc(formatDate(provider.email_resubscribed_at)) + '</span>' : '',
+        '</td>',
+        '<td>',
+        provider.notify_by_sms === true && !provider.sms_opt_out_at ? badge(t('optedIn'), 'ok') : badge(t('optedOut'), 'bad'),
+        provider.sms_opt_out_at ? '<br><span class="muted">Off: ' + esc(formatDate(provider.sms_opt_out_at)) + '</span>' : '',
+        provider.sms_opt_in_at ? '<br><span class="muted">On: ' + esc(formatDate(provider.sms_opt_in_at)) + '</span>' : '',
+        '</td>',
+        '<td>' + (provider.approved ? badge(t('approved'), 'ok') : badge(t('pending'), 'mid')) + ' ' + (provider.active ? badge(t('active'), 'ok') : badge(t('inactive'), 'bad')) + '</td>',
+        '<td>' + esc(formatDate(provider.created_at)) + '</td>',
+        '<td class="actions">',
+        '<button type="button" data-provider-action="approve" data-id="' + esc(provider.id) + '">' + esc(t('approve')) + '</button>',
+        '<button type="button" class="secondary" data-provider-action="activate" data-id="' + esc(provider.id) + '">' + esc(t('activate')) + '</button>',
+        '<button type="button" class="warning" data-provider-action="suspend" data-id="' + esc(provider.id) + '">' + esc(t('suspend')) + '</button>',
+        '</td>',
+        '</tr>',
+      ].join('')).join(''),
+      '</tbody></table></div>',
+    ].join('')
+  }
+
+  async function loadLeads() {
+    const { leads } = await api('/api/admin?resource=leads&_=' + Date.now())
+    $('leadsPanel').innerHTML = [
+      '<h2>' + esc(t('leads')) + '</h2>',
+      '<div class="scroll"><table>',
+      '<thead><tr>',
+      '<th>' + esc(t('lead')) + '</th>',
+      '<th>' + esc(t('customer')) + '</th>',
+      '<th>' + esc(t('contact')) + '</th>',
+      '<th>' + esc(t('job')) + '</th>',
+      '<th>' + esc(t('status')) + '</th>',
+      '<th>' + esc(t('shared')) + '</th>',
+      '<th>' + esc(t('created')) + '</th>',
+      '<th>' + esc(t('actions')) + '</th>',
+      '</tr></thead><tbody>',
+      leads.map((lead) => [
+        '<tr>',
+        '<td><b>' + esc(lead.public_id) + '</b><br><span class="muted">' + esc(lead.community_or_postal || lead.area || '') + '</span><br>' + dispatchSummaryHtml(lead.dispatch_status) + '</td>',
+        '<td>' + esc(lead.customer_name) + '</td>',
+        '<td>' + esc(lead.customer_phone) + '<br>' + esc(lead.customer_email || '') + '</td>',
+        '<td>' + esc(lead.service_type) + '<br><span class="muted">' + esc(lead.job_size) + ' · ' + esc(lead.timeline) + '</span></td>',
+        '<td>' + badge(statusText(lead.status), lead.status === 'published' || lead.status === 'shared_active' ? 'ok' : lead.status === 'queued' ? 'mid' : 'bad') + '</td>',
+        '<td>' + esc(lead.shared_claim_count) + ' / ' + esc(lead.shared_limit) + '</td>',
+        '<td>' + esc(formatDate(lead.created_at)) + '</td>',
+        '<td class="actions">',
+        '<button type="button" data-lead-action="publish" data-id="' + esc(lead.id) + '">' + esc(t('publish')) + '</button>',
+        '<button type="button" class="secondary" data-lead-action="queue" data-id="' + esc(lead.id) + '">' + esc(t('queue')) + '</button>',
+        '<button type="button" class="warning" data-lead-action="expire" data-id="' + esc(lead.id) + '">' + esc(t('expire')) + '</button>',
+        '</td>',
+        '</tr>',
+      ].join('')).join(''),
+      '</tbody></table></div>',
+    ].join('')
+  }
+
+  async function loadClaims() {
+    const { claims } = await api('/api/admin?resource=claims&_=' + Date.now())
+    $('claimsPanel').innerHTML = [
+      '<h2>' + esc(t('claims')) + '</h2>',
+      '<div class="scroll"><table>',
+      '<thead><tr>',
+      '<th>' + esc(t('time')) + '</th>',
+      '<th>' + esc(t('access')) + '</th>',
+      '<th>' + esc(t('status')) + '</th>',
+      '<th>' + esc(t('provider')) + '</th>',
+      '<th>' + esc(t('lead')) + '</th>',
+      '<th>' + esc(t('customer')) + '</th>',
+      '</tr></thead><tbody>',
+      claims.map((claim) => [
+        '<tr>',
+        '<td>' + esc(formatDate(claim.created_at)) + '</td>',
+        '<td>' + badge(claim.access === 'exclusive' ? t('exclusiveAccess') : t('sharedAccess'), claim.access === 'exclusive' ? 'mid' : 'ok') + '</td>',
+        '<td>' + esc(statusText(claim.status)) + '</td>',
+        '<td><b>' + esc(claim.provider?.business_name || '') + '</b><br>' + esc(claim.provider?.email || '') + '<br>' + esc(claim.provider?.phone || '') + '</td>',
+        '<td>' + esc(claim.lead?.public_id || '') + '<br>' + esc(claim.lead?.service_type || '') + '<br>' + esc(claim.lead?.community_or_postal || '') + '</td>',
+        '<td>' + esc(claim.lead?.customer_name || '') + '<br>' + esc(claim.lead?.customer_phone || '') + '<br>' + esc(claim.lead?.customer_email || '') + '</td>',
+        '</tr>',
+      ].join('')).join(''),
+      '</tbody></table></div>',
+    ].join('')
+  }
+
+  function saveToken() {
+    state.token = $('tokenInput').value.trim()
+    localStorage.setItem(storageKeys.token, state.token)
+    loadAll()
+  }
+
+  function clearToken() {
+    localStorage.removeItem(storageKeys.token)
+    state.token = ''
+    $('tokenInput').value = ''
+    $('app').style.display = 'none'
+    $('loginBox').style.display = 'grid'
+  }
+
+  function bindEvents() {
+    $('lang-en').addEventListener('click', () => setLang('en'))
+    $('lang-zh').addEventListener('click', () => setLang('zh'))
+    $('enterBtn').addEventListener('click', saveToken)
+    $('clearBtn').addEventListener('click', clearToken)
+    $('refreshBtn').addEventListener('click', loadAll)
+    $('platformControlsRefresh').addEventListener('click', async () => {
+      await Promise.all([loadPlatformControls(), loadDispatchOverview()])
+      $('platformControlsMessage').textContent = t('controlsRefreshed')
+    })
+    $('dispatchPendingLeadsBtn').addEventListener('click', dispatchPendingLeads)
+
+    document.addEventListener('click', (event) => {
+      const target = event.target
+      if (!(target instanceof HTMLElement)) return
+
+      const tab = target.getAttribute('data-tab')
+      if (tab) return showTab(tab)
+
+      const providerActionName = target.getAttribute('data-provider-action')
+      if (providerActionName) return providerAction(target.getAttribute('data-id'), providerActionName)
+
+      const leadActionName = target.getAttribute('data-lead-action')
+      if (leadActionName) return leadAction(target.getAttribute('data-id'), leadActionName)
+
+      const controlKey = target.getAttribute('data-control')
+      if (controlKey) {
+        const raw = target.getAttribute('data-value')
+        const value = raw === 'true' ? true : raw === 'false' ? false : raw
+        return updatePlatformControl(controlKey, value)
+      }
+    })
+  }
+
+  $('tokenInput').value = state.token
+  bindEvents()
+  applyLang()
+  if (state.token) loadAll()
+  else showTab('providers')
 })()
 </script>
-
 </body>
 </html>

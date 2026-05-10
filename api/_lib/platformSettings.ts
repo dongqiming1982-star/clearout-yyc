@@ -18,13 +18,13 @@ const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   provider_claims_enabled: true,
   exclusive_claims_enabled: false,
   lead_dispatch_channel: 'email',
-  exclusive_claims_enabled: false,
 }
 
 const SETTING_KEYS: PlatformSettingKey[] = [
   'customer_requests_enabled',
   'lead_dispatch_enabled',
   'provider_claims_enabled',
+  'exclusive_claims_enabled',
   'lead_dispatch_channel',
 ]
 
