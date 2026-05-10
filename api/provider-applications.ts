@@ -101,7 +101,7 @@ export default async function handler(req: any, res: any) {
         consent_text_version: 'provider-beta-v23',
         consent_ip: String(req.headers?.['x-forwarded-for'] || ''),
         consent_user_agent: String(req.headers?.['user-agent'] || ''),
-        daily_claim_limit: Number(application.daily_lead_limit || 20),
+        daily_claim_limit: Number(application.daily_lead_limit || 3),
         notes: JSON.stringify({ source_url, application }),
       })
       const provider = inserted?.[0] || null

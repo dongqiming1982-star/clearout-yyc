@@ -233,12 +233,16 @@ async function leadAction(req: any, res: any) {
     return res.status(400).json({ error: 'Unknown action' })
   }
 
-  const updated = await supabaseAdminFetch<any[]>(
+  await supabaseAdminFetch<any[]>(
     `leads?id=eq.${encodeURIComponent(leadId)}`,
     { method: 'PATCH', body: JSON.stringify(patch) }
   )
 
-  const lead = Array.isArray(updated) ? updated[0] : updated
+  const refreshed = await supabaseAdminFetch<any[]>(
+    `leads?select=id,public_id,status,customer_name,customer_phone,customer_email,community_or_postal,area,service_type,job_size,timeline,notes,shared_claim_count,shared_limit,created_at,publish_at,published_at,expires_at&id=eq.${encodeURIComponent(leadId)}&limit=1`
+  )
+
+  const lead = Array.isArray(refreshed) ? refreshed[0] : refreshed
   let notificationRecords: any = { skipped: true }
   let providerEmailSend: any = { skipped: true }
   let providerSmsSend: any = { skipped: true }
