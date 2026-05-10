@@ -1,5 +1,6 @@
-import { supabaseRpc } from '../_lib/supabase.js'
+import { supabaseRpc, supabaseSelect } from '../_lib/supabase.js'
 import { getPlatformSettings } from '../_lib/platformSettings.js'
+import { getLeadPhotosByLeadIds } from '../_lib/leadPhotos.js'
 
 export default async function handler(req: any, res: any) {
   try {
@@ -45,6 +46,10 @@ export default async function handler(req: any, res: any) {
     }
 
     const customer = result?.customer || {}
+    const leadRows = await supabaseSelect<any>(`leads?select=id,public_id&public_id=eq.${encodeURIComponent(leadId)}&limit=1`)
+    const savedLead = Array.isArray(leadRows) ? leadRows[0] : null
+    const photosByLead = savedLead?.id ? await getLeadPhotosByLeadIds([savedLead.id], true) : {}
+    const photos = savedLead?.id ? (photosByLead[savedLead.id] || []) : []
 
     const normalized = {
       ...result,
@@ -65,6 +70,8 @@ export default async function handler(req: any, res: any) {
       community_or_postal: customer.community_or_postal || result?.community_or_postal || '',
       area: customer.area || result?.area || '',
       request_description: customer.notes || result?.notes || result?.request_description || '',
+      photos,
+      photo_count: photos.filter((p: any) => p.active).length,
       claim_position: result?.shared_claim_count || (result?.access === 'exclusive' ? 1 : undefined),
       shared_claim_limit: result?.shared_limit || 3,
     }

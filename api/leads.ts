@@ -1,9 +1,10 @@
 import { verifyManualCaptcha } from './_lib/manualCaptcha.js'
 import { normalizeNorthAmericanPhone, normalizeOptionalEmail } from './_lib/validation.js'
 import { appendToGoogleSheet, customerLeadEmail, flatCustomerLead, sendResendEmail, verifyTurnstileIfConfigured } from './_lib/launch.js'
-import { hasSupabaseConfig, supabaseRpc, supabasePatch } from './_lib/supabase.js'
+import { hasSupabaseConfig, supabaseRpc, supabasePatch, supabaseSelect } from './_lib/supabase.js'
 import { getPlatformSettings } from './_lib/platformSettings.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
+import { uploadLeadPhotosForLead } from './_lib/leadPhotos.js'
 
 function firstText(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value || '')
@@ -37,7 +38,7 @@ function mapLeadToRpc(lead: any, sourceUrl: string) {
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-    const { lead, turnstileToken, source_url, manualCaptcha } = req.body || {}
+    const { lead, turnstileToken, source_url, manualCaptcha, leadPhotos } = req.body || {}
     if (!lead || typeof lead !== 'object') return res.status(400).json({ error: 'Missing lead payload' })
 
     const platformSettings = await getPlatformSettings()
@@ -71,12 +72,26 @@ export default async function handler(req: any, res: any) {
     let supabase: any = { skipped: true }
     let notificationRecords: any = { skipped: true }
     let providerEmailSend: any = { skipped: true }
-        let providerSmsSend: any = { skipped: true }
+    let providerSmsSend: any = { skipped: true }
+    let photoUpload: any = { skipped: true, reason: 'No accepted Supabase lead yet.' }
 
     if (hasSupabaseConfig()) {
       const created = await supabaseRpc<any>('create_public_lead', mapLeadToRpc(lead, sourceUrl))
       supabase = { skipped: false, result: created }
       if (created?.accepted && created?.lead_public_id) {
+        const photoPayload = Array.isArray(leadPhotos) ? leadPhotos.slice(0, 2) : []
+        if (photoPayload.length) {
+          const leadRows = await supabaseSelect<any>(`leads?select=id,public_id&public_id=eq.${encodeURIComponent(created.lead_public_id)}&limit=1`)
+          const savedLead = leadRows[0]
+          if (savedLead?.id) {
+            photoUpload = await uploadLeadPhotosForLead(savedLead.id, created.lead_public_id, photoPayload)
+          } else {
+            photoUpload = { skipped: true, reason: 'Lead was accepted but could not be reloaded for photo upload.' }
+          }
+        } else {
+          photoUpload = { skipped: false, attempted: 0, uploaded: 0, failed: 0, errors: [] }
+        }
+
         if (!platformSettings.lead_dispatch_enabled) {
           await supabasePatch(
             'leads',
@@ -123,8 +138,7 @@ export default async function handler(req: any, res: any) {
       ? 'No SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY, GOOGLE_SHEETS_WEBHOOK_URL, or RESEND_API_KEY/LEAD_NOTIFY_TO configured. The API accepted the form but did not store/send it anywhere.'
       : ''
 
-    return res.status(200).json({ ok: true, lead_id: row.lead_id, supabase, notificationRecords, providerEmailSend,
-        providerSmsSend, createdDispatches: notificationRecords.created || 0, sheet, email, warning })
+    return res.status(200).json({ ok: true, lead_id: row.lead_id, supabase, photoUpload, notificationRecords, providerEmailSend, providerSmsSend, createdDispatches: notificationRecords.created || 0, sheet, email, warning })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return res.status(500).json({ error: message })

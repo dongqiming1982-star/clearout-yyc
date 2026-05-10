@@ -473,6 +473,32 @@
     ].join('')
   }
 
+
+function leadPhotosHtml(photos, count, expiredCount) {
+  const active = Array.isArray(photos) ? photos.filter(photo => photo && photo.signed_url) : []
+  const total = Number(count || active.length || 0)
+  const expired = Number(expiredCount || 0)
+
+  if (!total && !expired) {
+    return '<div class="muted" style="margin-top:6px;font-size:12px">Photos: none</div>'
+  }
+
+  const thumbs = active.slice(0, 2).map(photo => {
+    const url = esc(photo.signed_url)
+    return '<a href="' + url + '" target="_blank" rel="noreferrer" title="Open photo" style="display:inline-block;margin:6px 6px 0 0">' +
+      '<img src="' + url + '" alt="Lead photo" style="width:58px;height:58px;object-fit:cover;border-radius:12px;border:1px solid #e2e8f0" />' +
+    '</a>'
+  }).join('')
+
+  const label = total ? ('Photos: ' + total) : ('Photos expired: ' + expired)
+
+  return '<div style="margin-top:6px">' +
+    '<span class="pill ' + (total ? 'ok' : 'mid') + '">' + esc(label) + '</span><br>' +
+    thumbs +
+    '</div>'
+}
+
+
   function dispatchSummaryHtml(info) {
     const total = Number(info?.total || 0)
     const email = Number(info?.email || 0)
@@ -801,7 +827,7 @@
       '</tr></thead><tbody>',
       leads.map((lead) => [
         '<tr>',
-        '<td><b>' + esc(lead.public_id) + '</b><br><span class="muted">' + esc(lead.community_or_postal || lead.area || '') + '</span><br>' + dispatchSummaryHtml(lead.dispatch_status) + '</td>',
+        '<td><b>' + esc(lead.public_id) + '</b><br><span class="muted">' + esc(lead.community_or_postal || lead.area || '') + '</span><br>' + dispatchSummaryHtml(lead.dispatch_status) + leadPhotosHtml(lead.photos, lead.photo_count, lead.photo_expired_count) + '</td>',
         '<td>' + esc(lead.customer_name) + '</td>',
         '<td>' + esc(lead.customer_phone) + '<br>' + esc(lead.customer_email || '') + '</td>',
         '<td>' + esc(lead.service_type) + '<br><span class="muted">' + esc(lead.job_size) + ' · ' + esc(lead.timeline) + '</span></td>',

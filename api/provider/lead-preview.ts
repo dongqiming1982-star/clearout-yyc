@@ -1,5 +1,6 @@
 import { supabaseSelect } from '../_lib/supabase.js'
 import { getPlatformSettings } from '../_lib/platformSettings.js'
+import { getLeadPhotosByLeadIds } from '../_lib/leadPhotos.js'
 
 type ProviderRow = {
   id: string
@@ -76,6 +77,8 @@ export default async function handler(req: any, res: any) {
 
     const sharedLimit = Number(lead.shared_limit || 3)
     const sharedCount = Number(lead.shared_claim_count || 0)
+    const photosByLead = await getLeadPhotosByLeadIds([lead.id], true)
+    const photos = photosByLead[lead.id] || []
 
     const result: any = {
       ok: true,
@@ -96,6 +99,8 @@ export default async function handler(req: any, res: any) {
         shared_limit: sharedLimit,
         expires_at: lead.expires_at,
         created_at: lead.created_at,
+        photos,
+        photo_count: photos.filter((p: any) => p.active).length,
         already_claimed_by_you: alreadyClaimed,
         shared_available: alreadyClaimed ? false : ['published', 'shared_active'].includes(lead.status) && sharedCount < sharedLimit,
         exclusive_available: alreadyClaimed ? false : Boolean(platformSettings.exclusive_claims_enabled) && lead.status === 'published' && sharedCount === 0,
@@ -118,6 +123,8 @@ export default async function handler(req: any, res: any) {
       result.community_or_postal = lead.community_or_postal || ''
       result.area = lead.area || ''
       result.request_description = lead.notes || ''
+      result.photos = photos
+      result.photo_count = photos.filter((p: any) => p.active).length
       result.access = existingClaim?.access || 'shared'
       result.lead_public_id = lead.public_id
     }

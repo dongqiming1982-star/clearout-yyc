@@ -48,6 +48,32 @@ type FileMeta = {
   review_status: 'not_uploaded' | 'uploaded' | 'approved' | 'rejected' | 'expired'
 }
 
+type LeadPhotoUpload = {
+  file_name: string
+  mime_type: string
+  data_url: string
+  file_size: number
+  width: number
+  height: number
+  sort_order: number
+}
+
+type PreparedLeadPhoto = LeadPhotoUpload & {
+  preview_url: string
+  original_size: number
+}
+
+type LeadPhotoView = {
+  public_id?: string
+  file_name?: string
+  file_size?: number
+  width?: number
+  height?: number
+  expires_at?: string
+  signed_url?: string
+  active?: boolean
+}
+
 type Lead = {
   lead_id: string
   customer_token: string
@@ -830,7 +856,90 @@ function setList<T>(key: string, rows: T[]) { localStorage.setItem(key, JSON.str
 function saveList<T>(key: string, row: T) { const old = getList<T>(key); setList(key, [row, ...old].slice(0, 500)) }
 function toggleValue(list: string[], value: string) { return list.includes(value) ? list.filter(x => x !== value) : [...list, value] }
 function optionLabel(options: ReadonlyArray<{id: string; en: string; zh: string}>, id: string, lang: Lang) { return options.find(o => o.id === id)?.[lang] || id }
+
 function fileMeta(file?: File | null): FileMeta | null { return file ? { file_name: file.name, file_size: file.size, file_type: file.type || 'unknown', uploaded_at: new Date().toISOString(), review_status: 'uploaded' } : null }
+
+function dataUrlByteSize(dataUrl: string) {
+  const base64 = String(dataUrl || '').split(',')[1] || ''
+  return Math.floor(base64.length * 0.75)
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read image file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('Could not load image file.'))
+    img.src = dataUrl
+  })
+}
+
+async function compressLeadPhoto(file: File, sortOrder: number): Promise<PreparedLeadPhoto> {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowed.includes(file.type)) throw new Error('Only JPG, PNG, and WebP images are allowed.')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Original photo must be 5 MB or smaller.')
+
+  const rawUrl = await readFileAsDataUrl(file)
+  const image = await loadImageFromDataUrl(rawUrl)
+
+  const maxSide = 1400
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || image.width, image.naturalHeight || image.height))
+  const width = Math.max(1, Math.round((image.naturalWidth || image.width) * scale))
+  const height = Math.max(1, Math.round((image.naturalHeight || image.height) * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Your browser could not prepare the photo.')
+  ctx.drawImage(image, 0, 0, width, height)
+
+  let dataUrl = ''
+  for (const quality of [0.82, 0.74, 0.66, 0.58, 0.5]) {
+    dataUrl = canvas.toDataURL('image/jpeg', quality)
+    if (dataUrlByteSize(dataUrl) <= 700 * 1024) break
+  }
+
+  const fileSize = dataUrlByteSize(dataUrl)
+  if (fileSize > 1024 * 1024) throw new Error('Compressed photo is still too large. Please choose a smaller image.')
+
+  return {
+    file_name: file.name || `photo-${sortOrder + 1}.jpg`,
+    mime_type: 'image/jpeg',
+    data_url: dataUrl,
+    file_size: fileSize,
+    width,
+    height,
+    sort_order: sortOrder,
+    preview_url: dataUrl,
+    original_size: file.size,
+  }
+}
+
+async function prepareLeadPhotoUploads(files: FileList | null): Promise<PreparedLeadPhoto[]> {
+  const selected = Array.from(files || []).slice(0, 2)
+  const prepared: PreparedLeadPhoto[] = []
+  for (let i = 0; i < selected.length; i++) {
+    prepared.push(await compressLeadPhoto(selected[i], i))
+  }
+  return prepared
+}
+
+function formatBytes(value?: number) {
+  const n = Number(value || 0)
+  if (!n) return '0 KB'
+  if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
+  return `${Math.max(1, Math.round(n / 1024))} KB`
+}
+
 
 function normalizeNorthAmericanPhone(input: string): string | null {
   const raw = String(input || '').trim()
@@ -1666,6 +1775,9 @@ function RequestForm({ lang }: { lang: Lang }) {
   const [communitySlug, setCommunitySlug] = useState<string>(initialCommunity?.slug || 'other')
   const [contact, setContact] = useState({ name: '', phone: '', email: '', community: initialCommunity?.name || '', area: (initialCommunity?.area || 'unknown') as Area, description: '' })
   const [photos, setPhotos] = useState<FileMeta[]>([])
+  const [leadPhotos, setLeadPhotos] = useState<PreparedLeadPhoto[]>([])
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [photoError, setPhotoError] = useState('')
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [otpSentAt, setOtpSentAt] = useState('')
   const [consent, setConsent] = useState(false)
@@ -1676,7 +1788,27 @@ function RequestForm({ lang }: { lang: Lang }) {
   const manualCaptcha = useManualCaptcha()
 
   const classification = useMemo(() => classifyLead({ categories, amount, timing, location, regular, blocked }), [categories, amount, timing, location, regular, blocked])
-  const photoHandler = (files: FileList | null) => setPhotos(Array.from(files || []).slice(0, 8).map(f => fileMeta(f)).filter(Boolean) as FileMeta[])
+  const photoHandler = async (files: FileList | null) => {
+    setPhotoError('')
+    setPhotoBusy(true)
+    try {
+      const prepared = await prepareLeadPhotoUploads(files)
+      setLeadPhotos(prepared)
+      setPhotos(prepared.map(p => ({
+        file_name: p.file_name,
+        file_size: p.file_size,
+        file_type: p.mime_type,
+        uploaded_at: new Date().toISOString(),
+        review_status: 'uploaded',
+      })))
+    } catch (e) {
+      setLeadPhotos([])
+      setPhotos([])
+      setPhotoError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
   const communitySelectOptions = [{ id: 'other', en: 'Other / not sure', zh: '其他 / 不确定' }, ...communities.map(c => ({ id: c.slug, en: `${c.name} (${areaName(c.area, 'en')})`, zh: `${c.name}（${areaName(c.area, 'zh')}）` }))]
   function chooseCommunity(slug: string) {
     setCommunitySlug(slug)
@@ -1722,6 +1854,7 @@ function RequestForm({ lang }: { lang: Lang }) {
           source: 'clearout_yyc_request_form',
           source_url: window.location.href,
           manualCaptcha: manualCaptchaPayload(manualCaptcha),
+          leadPhotos: leadPhotos.map(({ preview_url, original_size, ...photo }) => photo),
         })
         saveList<Lead>('clearout_leads', lead)
         setDone({ lead, dispatched: Number(remote?.createdDispatches || 0) })
@@ -1778,7 +1911,10 @@ function RequestForm({ lang }: { lang: Lang }) {
                     help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
                   /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
       <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span><textarea value={contact.description} onChange={e => setContact({ ...contact, description: e.target.value })} placeholder={lang === 'zh' ? '例如：Beltline 公寓，有一张沙发和一个床垫，本周清走。' : 'Example: Beltline apartment, sofa and mattress, this week.'} className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label>
-      <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{lang === 'zh' ? '上传照片（可选）' : 'Upload photos (optional)'}<input type="file" multiple accept="image/*" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>{photos.length > 0 && <p className="mt-2 text-xs text-slate-500">{photos.length} {lang === 'zh' ? '张照片已选择' : 'photo(s) selected'}</p>}
+      <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100"><Camera size={18}/>{photoBusy ? (lang === 'zh' ? '正在压缩照片…' : 'Compressing photos…') : (lang === 'zh' ? '上传照片（可选，最多 2 张）' : 'Upload photos (optional, max 2)')}<input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={e => photoHandler(e.target.files)} /></label>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{lang === 'zh' ? '原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。' : 'Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}</p>
+      {photoError && <p className="mt-2 text-xs font-semibold text-red-700">{photoError}</p>}
+      {leadPhotos.length > 0 && <div className="mt-3 grid gap-3 sm:grid-cols-2">{leadPhotos.map((photo, i) => <div key={i} className="overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-black/10"><img src={photo.preview_url} alt={photo.file_name} className="h-40 w-full object-cover"/><div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width}×{photo.height}</div></div>)}</div>}
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
@@ -1909,6 +2045,32 @@ function ProviderForm({ lang }: { lang: Lang }) {
     <div className="space-y-5"><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '服务商规则' : 'Provider rules'}</h3><div className="mt-5 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? '先确认电话：客户需求在分享前会先确认手机号。' : 'Phone confirmation: customer phone is confirmed before dispatch.'}</p><p>✔ {lang === 'zh' ? 'Beta 免费：测试阶段免费接收客户电话。' : 'Free beta: receive customer contact free during testing.'}</p><p>✔ {lang === 'zh' ? '无 App、无月费、无登录后台。' : 'No app, no monthly fee, no dashboard login.'}</p><p>✔ {lang === 'zh' ? '未来如启用付费，查看联系方式前会清楚显示规则。' : 'If paid access is enabled later, terms are shown before contact release.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来付费原则' : 'Future paid access principles'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700"><p><b>{lang === 'zh' ? 'Beta 期间免费：' : 'Free during beta:'}</b> {lang === 'zh' ? '当前阶段先验证客户需求和服务商响应。' : 'This stage is for testing customer demand and provider response.'}</p><p><b>{lang === 'zh' ? '以后按需付费：' : 'Pay only if you choose:'}</b> {lang === 'zh' ? '如果未来开启付费，只有当你选择查看客户联系方式时才可能付费，无月费、无隐藏订阅。' : 'If paid access is enabled later, you may pay only when you choose to view a customer contact. No monthly fee or hidden subscription.'}</p><p><b>{lang === 'zh' ? '查看前明示：' : 'Shown before access:'}</b> {lang === 'zh' ? '共享/独家、已售人数、价格和退款/credit 规则会在查看联系方式前显示。' : 'Shared/exclusive status, sold count, price, and refund/credit rules will be shown before contact access.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来审核资料' : 'Future verification'}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '正式收费或 Verified 标识上线前，可补充商业保险、BN、Business ID、WCB 等文件。字段已在数据模型中保留。' : 'Before paid mode or verified badge, providers can add insurance, BN, Business ID, WCB, and other documents. Fields are already reserved in the data model.'}</p></div></div></div>
 }
 
+
+function LeadPhotoGallery({ lang, photos }: { lang: Lang; photos?: LeadPhotoView[] }) {
+  const active = (photos || []).filter(p => p.active !== false && p.signed_url)
+
+  if (!active.length) {
+    return <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+      <b className="text-slate-950">{lang === 'zh' ? '照片' : 'Photos'}</b>
+      <p className="mt-1">{lang === 'zh' ? '客户没有上传照片，或照片已过期。' : 'No photos were uploaded, or the photos have expired.'}</p>
+    </div>
+  }
+
+  return <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+    <div className="flex items-center justify-between gap-3">
+      <b className="text-sm text-slate-950">{lang === 'zh' ? '客户照片' : 'Customer photos'}</b>
+      <span className="text-xs font-semibold text-slate-500">{active.length} / 2</span>
+    </div>
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      {active.map((photo, i) => <a key={photo.public_id || i} href={photo.signed_url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl bg-white ring-1 ring-black/10 hover:ring-red-700/30">
+        <img src={photo.signed_url} alt={photo.file_name || `Lead photo ${i + 1}`} className="h-52 w-full object-cover" loading="lazy" />
+        <div className="p-3 text-xs font-semibold text-slate-500">{formatBytes(photo.file_size)} · {photo.width || '—'}×{photo.height || '—'}</div>
+      </a>)}
+    </div>
+    <p className="mt-3 text-xs leading-5 text-slate-500">{lang === 'zh' ? '照片链接为临时访问链接，默认 30 天后云端删除。' : 'Photo links are temporary; uploaded photos are removed from cloud storage after 30 days by default.'}</p>
+  </div>
+}
+
 type ProviderLeadPreviewResult = {
   ok?: boolean
   lead?: {
@@ -1928,6 +2090,8 @@ type ProviderLeadPreviewResult = {
     already_claimed_by_you?: boolean
     exclusive_available?: boolean
     shared_available?: boolean
+    photo_count?: number
+    photos?: LeadPhotoView[]
   }
   message?: string
 }
@@ -1945,6 +2109,8 @@ type ProviderClaimResult = {
   community_or_postal?: string
   area?: string
   request_description?: string
+  photo_count?: number
+  photos?: LeadPhotoView[]
   customer?: {
     name?: string
     phone?: string
@@ -2111,6 +2277,7 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
           <b>{lang === 'zh' ? '客户备注预览' : 'Customer notes preview'}</b>
           <p className="mt-2">{leadData.notes_preview || (lang === 'zh' ? '无备注。' : 'No notes provided.')}</p>
         </div>
+        <LeadPhotoGallery lang={lang} photos={leadData.photos} />
         <p className="mt-5 text-sm leading-6 text-slate-500">{lang === 'zh' ? '认领前不显示客户电话、邮箱或完整联系方式。认领成功后，你直接联系客户报价和安排服务。Clearout YYC 不提供电话派单。' : 'Customer phone, email, and full contact details are hidden until claim. After claiming, contact the customer directly to quote and arrange service. Clearout YYC does not provide phone dispatch.'}</p>
 
         {leadUnavailableNotice && <div className="mt-6 rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-950 ring-1 ring-amber-200">
@@ -2139,6 +2306,7 @@ function ProviderLeadClaimPage({ lang }: { lang: Lang }) {
           <p><b>Email:</b> {claim.customer?.email || claim.customer_email || '—'}</p>
         </div>
         <p className="mt-4 text-sm leading-6 text-emerald-900">{claim.customer?.notes || claim.request_description || ''}</p>
+        <LeadPhotoGallery lang={lang} photos={claim.photos || leadData?.photos} />
       </div>}
     </section>
   </main>

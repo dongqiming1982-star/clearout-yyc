@@ -3,6 +3,7 @@ import { supabaseRpc } from './_lib/supabase.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 import { sendProviderApprovalEmail } from './_lib/providerLifecycleEmails.js'
 import { getPlatformSettings, updatePlatformSetting } from './_lib/platformSettings.js'
+import { getLeadPhotosByLeadIds } from './_lib/leadPhotos.js'
 
 function daysFromNow(days: number) {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
@@ -180,8 +181,16 @@ async function getLeads(res: any) {
     }
   }
 
-  const enriched = leads.map(lead => ({
+  const photosByLeadId = await getLeadPhotosByLeadIds(leadIds, true)
+
+  const enriched = leads.map(lead => {
+    const photos = photosByLeadId[lead.id] || []
+    const activePhotos = photos.filter((p: any) => p.active)
+    return {
     ...lead,
+    photos: activePhotos,
+    photo_count: activePhotos.length,
+    photo_expired_count: photos.filter((p: any) => p.expired || p.deleted_at).length,
     dispatch_status: dispatchByLeadId[lead.id] || {
       total: 0,
       email: 0,
@@ -195,7 +204,8 @@ async function getLeads(res: any) {
       last_sent_at: null,
       last_error_message: null,
     },
-  }))
+  }
+  })
 
   return res.status(200).json({ ok: true, leads: enriched })
 }
