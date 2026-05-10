@@ -4,6 +4,8 @@ import { appendToGoogleSheet, flatProviderApplication, providerApplicationEmail,
 import { hasSupabaseConfig, supabaseInsert, supabaseSelect } from './_lib/supabase.js'
 import { sendProviderApplicationReceivedEmail } from './_lib/providerLifecycleEmails.js'
 
+const PROVIDER_DESCRIPTION_MAX = 300
+
 function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []
 }
@@ -21,9 +23,17 @@ export default async function handler(req: any, res: any) {
 
     const businessName = String(application.provider_display_name || application.business_name || '').trim()
     const contactName = String(application.contact_name || '').trim()
+    const businessDescription = String(application.business_description || '').trim()
 
     if (!businessName || !contactName) {
       return res.status(400).json({ error: 'Please enter business name and contact name.' })
+    }
+
+    if (businessDescription.length > PROVIDER_DESCRIPTION_MAX) {
+      return res.status(400).json({
+        error: `Business introduction is too long. Please keep it under ${PROVIDER_DESCRIPTION_MAX} characters.`,
+        code: 'business_description_too_long',
+      })
     }
 
     const normalizedProviderPhone = normalizeNorthAmericanPhone(application.phone)
@@ -40,6 +50,7 @@ export default async function handler(req: any, res: any) {
     application.contact_name = contactName
     application.phone = normalizedProviderPhone
     application.email = normalizedProviderEmail
+    application.business_description = businessDescription
 
     const row = flatProviderApplication(application, String(source_url || req.headers?.referer || ''))
     let supabase: any = { skipped: true }
@@ -64,6 +75,7 @@ export default async function handler(req: any, res: any) {
       const inserted = await supabaseInsert('providers', {
         business_name: String(application.provider_display_name || application.business_name || 'Provider'),
         contact_name: String(application.contact_name || ''),
+        business_description: businessDescription,
         email: String(application.email || ''),
         phone: String(application.phone || ''),
         approved: false,

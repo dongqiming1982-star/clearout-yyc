@@ -58,6 +58,7 @@ export function flatProviderApplication(application: Record<string, unknown>, so
     application_id: str(application.application_id),
     provider_display_name: str(application.provider_display_name),
     contact_name: str(application.contact_name),
+    business_description: str(application.business_description),
     phone: str(application.phone),
     email: str(application.email),
     service_areas: list(application.service_areas),
@@ -166,12 +167,13 @@ export function providerApplicationEmail(row: Record<string, unknown>) {
     `Contact: ${row.contact_name}`,
     `Phone: ${row.phone}`,
     `Email: ${row.email}`,
+    `Description: ${row.business_description}`,
     `Areas: ${row.service_areas}`,
     `Services: ${row.services_accepted}`,
     `Vehicles: ${row.vehicle_capabilities}`,
     `Notification: ${row.preferred_notification}`,
     `Source: ${row.source_url}`,
   ].join('\n')
-  const html = `<h2>${escapeHtml(subject)}</h2><p><b>Provider:</b> ${escapeHtml(row.provider_display_name)}</p><p><b>Contact:</b> ${escapeHtml(row.contact_name)}</p><p><b>Phone:</b> ${escapeHtml(row.phone)}</p><p><b>Email:</b> ${escapeHtml(row.email)}</p><p><b>Areas:</b> ${escapeHtml(row.service_areas)}</p><p><b>Services:</b> ${escapeHtml(row.services_accepted)}</p><p><b>Vehicles:</b> ${escapeHtml(row.vehicle_capabilities)}</p><p><b>Notification:</b> ${escapeHtml(row.preferred_notification)}</p><p><b>Source:</b> ${escapeHtml(row.source_url)}</p>`
+  const html = `<h2>${escapeHtml(subject)}</h2><p><b>Provider:</b> ${escapeHtml(row.provider_display_name)}</p><p><b>Contact:</b> ${escapeHtml(row.contact_name)}</p><p><b>Phone:</b> ${escapeHtml(row.phone)}</p><p><b>Email:</b> ${escapeHtml(row.email)}</p><p><b>Description:</b> ${escapeHtml(row.business_description)}</p><p><b>Areas:</b> ${escapeHtml(row.service_areas)}</p><p><b>Services:</b> ${escapeHtml(row.services_accepted)}</p><p><b>Vehicles:</b> ${escapeHtml(row.vehicle_capabilities)}</p><p><b>Notification:</b> ${escapeHtml(row.preferred_notification)}</p><p><b>Source:</b> ${escapeHtml(row.source_url)}</p>`
   return { subject, text, html }
 }

@@ -6,6 +6,8 @@ import { getPlatformSettings } from './_lib/platformSettings.js'
 import { getClearoutBaseUrl, getProviderEmailBatchLimit, sendPendingProviderEmails, sendPendingProviderSms } from './_lib/providerNotifications.js'
 import { uploadLeadPhotosForLead } from './_lib/leadPhotos.js'
 
+const CUSTOMER_DESCRIPTION_MAX = 150
+
 function firstText(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean).join(', ') : String(value || '')
 }
@@ -66,6 +68,15 @@ export default async function handler(req: any, res: any) {
 
     lead.customer_phone = normalizedCustomerPhone
     lead.customer_email = normalizedCustomerEmail
+
+    const requestDescription = String(lead.request_description || '').trim()
+    if (requestDescription.length > CUSTOMER_DESCRIPTION_MAX) {
+      return res.status(400).json({
+        error: `Description is too long. Please keep it under ${CUSTOMER_DESCRIPTION_MAX} characters.`,
+        code: 'description_too_long',
+      })
+    }
+    lead.request_description = requestDescription
 
     const sourceUrl = String(source_url || req.headers?.referer || '')
     const row = flatCustomerLead(lead, sourceUrl)

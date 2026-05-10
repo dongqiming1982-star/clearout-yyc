@@ -20,6 +20,9 @@ import {
   X,
 } from 'lucide-react'
 
+const CUSTOMER_DESCRIPTION_MAX = 150
+const PROVIDER_DESCRIPTION_MAX = 300
+
 type Lang = 'en' | 'zh'
 type Route =
   | { type: 'home' }
@@ -149,6 +152,7 @@ type ProviderApplication = {
   contact_name: string
   phone: string
   email: string
+  business_description: string
   service_areas: Area[]
   services_accepted: string[]
   vehicle_capabilities: string[]
@@ -1946,7 +1950,17 @@ function RequestForm({ lang }: { lang: Lang }) {
                     setValue={v => { setContact({ ...contact, phone: v }); setPhoneVerified(false); setOtpSentAt('') }}
                     help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
                   /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: 'unknown' })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；正式派单先按社区，再按大区匹配。' : 'Community pages pre-fill this field. Production dispatch can match by community first, then by quadrant.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
-      <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span><textarea value={contact.description} onChange={e => setContact({ ...contact, description: e.target.value })} placeholder={lang === 'zh' ? '例如：Beltline 公寓，有一张沙发和一个床垫，本周清走。' : 'Example: Beltline apartment, sofa and mattress, this week.'} className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10" /></label>
+      <label className="mt-5 block">
+        <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span>
+        <textarea
+          value={contact.description}
+          maxLength={CUSTOMER_DESCRIPTION_MAX}
+          onChange={e => setContact({ ...contact, description: e.target.value })}
+          placeholder={lang === 'zh' ? '例如：车库里有沙发和床垫，容易搬，希望周末清走。' : 'Example: Sofa and mattress in garage, easy access, prefer this weekend.'}
+          className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+        />
+        <span className="mt-1 block text-right text-xs font-semibold text-slate-400">{contact.description.length}/{CUSTOMER_DESCRIPTION_MAX}</span>
+      </label>
       <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100">
         <Camera size={18}/>
         {photoBusy
@@ -2042,7 +2056,7 @@ function ProviderPage({ lang }: { lang: Lang }) {
 }
 
 function ProviderForm({ lang }: { lang: Lang }) {
-  const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', preferred: 'sms' as ProviderApplication['preferred_notification'], crew: 'one' as ProviderApplication['crew_capacity'], daily: 3, sameDay: 'depends' as ProviderApplication['accepts_same_day'] })
+  const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', description: '', preferred: 'sms' as ProviderApplication['preferred_notification'], crew: 'one' as ProviderApplication['crew_capacity'], daily: 3, sameDay: 'depends' as ProviderApplication['accepts_same_day'] })
   const [areas, setAreas] = useState<Area[]>(['central'])
   const [services, setServices] = useState<string[]>(['mattress_bed', 'sofa_furniture'])
   const [vehicles, setVehicles] = useState<string[]>(['pickup'])
@@ -2067,13 +2081,16 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
     const normalizedProviderEmail = normalizeEmail(form.email)
     if (!normalizedProviderEmail) { setError(lang === 'zh' ? '请输入有效的服务商邮箱地址。' : 'Please enter a valid business email address.'); return }
+    const businessDescription = form.description.trim()
+    if (businessDescription.length > PROVIDER_DESCRIPTION_MAX) { setError(lang === 'zh' ? `服务商介绍最多 ${PROVIDER_DESCRIPTION_MAX} 个字符。` : `Business introduction must be ${PROVIDER_DESCRIPTION_MAX} characters or less.`); return }
+
     if (!areas.length || !services.length || !vehicles.length) { setError(lang === 'zh' ? '请选择服务区域、可接服务和车辆能力。' : 'Choose service areas, services, and vehicle capability.'); return }
     if (!smsConsent || !legal || !dumping || !terms) { setError(lang === 'zh' ? '请确认短信接收、合法经营、不非法倾倒和条款。' : 'Please confirm SMS opt-in, legal operation, no illegal dumping, and terms.'); return }
     if (!isManualCaptchaReady(manualCaptcha)) { setError(lang === 'zh' ? '请输入人工验证码答案。' : 'Please enter the manual verification answer.'); return }
     const maxLevel = Math.max(...vehicles.map(v => vehicleOptions.find(x => x.id === v)?.level || 1))
     const row: ProviderApplication = {
       application_id: uid('provider'), created_at: new Date().toISOString(), approval_status: 'submitted', active: true, beta_opt_in: true, verified: false, last_assigned_at: null,
-      provider_display_name: form.name.trim(), contact_name: form.contact.trim(), phone: normalizedProviderPhone, email: normalizedProviderEmail, service_areas: areas, services_accepted: services, vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
+      provider_display_name: form.name.trim(), contact_name: form.contact.trim(), phone: normalizedProviderPhone, email: normalizedProviderEmail, business_description: businessDescription, service_areas: areas, services_accepted: services, vehicle_capabilities: vehicles, max_vehicle_level: maxLevel, crew_capacity: form.crew,
       accepts_sms_leads: form.preferred !== 'email', accepts_email_leads: form.preferred !== 'sms', sms_consent_confirmed: smsConsent, preferred_notification: form.preferred, daily_lead_limit: form.daily, available_days: days, available_time_windows: windows, accepts_same_day: form.sameDay, refund_or_bad_number_policy_seen: true,
       provider_type: 'not_sure', legal_owner_name: '', corporation_legal_name: '', registered_trade_name: '', business_number_bn: '', gst_hst_account: '', city_business_id: '', alberta_registration_proof: null,
       general_liability_status: 'not_sure', commercial_auto_status: 'not_sure', insurance_company: '', policy_number: '', insurance_expiry: '', general_liability_proof: null, commercial_auto_proof: null,
@@ -2107,6 +2124,17 @@ function ProviderForm({ lang }: { lang: Lang }) {
                     setValue={v => setForm({ ...form, phone: v })}
                     help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
                   /><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
+    <label className="mt-4 block">
+      <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '服务商介绍（可选）' : 'Business introduction (optional)'}</span>
+      <textarea
+        value={form.description}
+        maxLength={PROVIDER_DESCRIPTION_MAX}
+        onChange={e => setForm({ ...form, description: e.target.value })}
+        placeholder={lang === 'zh' ? '例如：本地清运团队，可做家具、床垫、车库清理和退租清理。' : 'Example: Local junk removal crew for furniture, mattresses, garage cleanouts, and move-out clearouts.'}
+        className="min-h-[96px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+      />
+      <span className="mt-1 block text-right text-xs font-semibold text-slate-400">{form.description.length}/{PROVIDER_DESCRIPTION_MAX}</span>
+    </label>
     <MultiSelect title={lang === 'zh' ? '服务区域' : 'Service areas'} options={areaOptions as any} selected={areas} setSelected={v => setAreas(v as Area[])} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '可接清运类型' : 'Accepted job types'} options={providerServiceOptions} selected={services} setSelected={setServices} lang={lang}/>
     <MultiSelect title={lang === 'zh' ? '车辆能力' : 'Vehicle capability'} options={vehicleOptions} selected={vehicles} setSelected={setVehicles} lang={lang}/>
