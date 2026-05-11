@@ -7,18 +7,7 @@ export type AdminResource =
   | 'dispatch-status'
   | 'dispatch-overview'
 
-export async function adminGet<T = any>(
-  resource: AdminResource,
-  token: string,
-): Promise<T> {
-  const res = await fetch(`/api/admin?resource=${encodeURIComponent(resource)}`, {
-    method: 'GET',
-    headers: {
-      'x-admin-token': token,
-    },
-    cache: 'no-store',
-  })
-
+async function parseResponse(res: Response) {
   const text = await res.text()
   let data: any = null
 
@@ -32,5 +21,40 @@ export async function adminGet<T = any>(
     throw new Error(data?.error || `Admin request failed: ${res.status}`)
   }
 
-  return data as T
+  return data
+}
+
+export async function adminGet<T = any>(
+  resource: AdminResource,
+  token: string,
+): Promise<T> {
+  const url = `/api/admin?resource=${encodeURIComponent(resource)}&_=${Date.now()}`
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'x-admin-token': token,
+    },
+    cache: 'no-store',
+  })
+
+  return parseResponse(res) as Promise<T>
+}
+
+export async function adminPost<T = any>(
+  path: string,
+  token: string,
+  body?: Record<string, any>,
+): Promise<T> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-admin-token': token,
+    },
+    body: JSON.stringify(body || {}),
+    cache: 'no-store',
+  })
+
+  return parseResponse(res) as Promise<T>
 }
