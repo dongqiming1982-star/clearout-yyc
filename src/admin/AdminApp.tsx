@@ -357,24 +357,207 @@ function ControlCard({
   )
 }
 
+function numberValue(...values: any[]): number {
+  for (const value of values) {
+    if (value === null || value === undefined || value === '') continue
+    const n = Number(value)
+    if (!Number.isNaN(n)) return n
+  }
+  return 0
+}
+
+function getDispatchStats(info: any) {
+  if (!info || !isRecord(info)) return null
+
+  const notifications = isRecord(info.notifications) ? info.notifications : {}
+
+  const channel =
+    info.channel ||
+    info.lead_dispatch_channel ||
+    info.dispatch_channel ||
+    notifications.channel ||
+    ''
+
+  const total = numberValue(
+    info.total,
+    info.count,
+    info.notification_count,
+    notifications.total,
+  )
+
+  const pending = numberValue(
+    info.pending,
+    info.pending_count,
+    notifications.pending,
+  )
+
+  const sent = numberValue(
+    info.sent,
+    info.sent_count,
+    notifications.sent,
+  )
+
+  const failed = numberValue(
+    info.failed,
+    info.failed_count,
+    notifications.failed,
+  )
+
+  const skipped = numberValue(
+    info.skipped,
+    info.skipped_count,
+    notifications.skipped,
+  )
+
+  const emailPending = numberValue(notifications.email_pending, info.email_pending)
+  const emailSent = numberValue(notifications.email_sent, info.email_sent)
+  const emailFailed = numberValue(notifications.email_failed, info.email_failed)
+
+  const smsPending = numberValue(notifications.sms_pending, info.sms_pending)
+  const smsSent = numberValue(notifications.sms_sent, info.sms_sent)
+  const smsFailed = numberValue(notifications.sms_failed, info.sms_failed)
+
+  return {
+    channel,
+    total,
+    pending,
+    sent,
+    failed,
+    skipped,
+    emailPending,
+    emailSent,
+    emailFailed,
+    smsPending,
+    smsSent,
+    smsFailed,
+  }
+}
+
 function DispatchBadge({ info, lang }: { info: any; lang: Lang }) {
   const t = TEXT[lang]
-  if (!info) {
+  const stats = getDispatchStats(info)
+
+  if (!stats) {
     return <Badge tone="bad">{t.dispatch}: {t.notCreated}</Badge>
   }
 
-  const channel = info.channel || info.lead_dispatch_channel || info.dispatch_channel || ''
-  const total = Number(info.total || info.count || info.notification_count || 0)
-  const sent = Number(info.sent || info.sent_count || 0)
-  const failed = Number(info.failed || info.failed_count || 0)
-  const pending = Number(info.pending || info.pending_count || 0)
+  const parts = [
+    `${t.dispatch}: ${stats.channel || '—'}`,
+    `${t.total} ${stats.total}`,
+  ]
 
-  const parts = [`${t.dispatch}: ${channel || '—'}`, `${t.total} ${total}`]
-  if (sent) parts.push(`${t.sent} ${sent}`)
-  if (failed) parts.push(`${t.failed} ${failed}`)
-  if (pending) parts.push(`${lang === 'zh' ? '待发送' : 'pending'} ${pending}`)
+  if (stats.sent) parts.push(`${t.sent} ${stats.sent}`)
+  if (stats.failed) parts.push(`${t.failed} ${stats.failed}`)
+  if (stats.skipped) parts.push(`${lang === 'zh' ? '跳过' : 'skipped'} ${stats.skipped}`)
+  if (stats.pending) parts.push(`${lang === 'zh' ? '待发送' : 'pending'} ${stats.pending}`)
 
-  return <Badge tone={failed ? 'bad' : sent ? 'ok' : 'mid'}>{parts.join(' · ')}</Badge>
+  const tone = stats.failed
+    ? 'bad'
+    : stats.pending || stats.skipped
+      ? 'mid'
+      : stats.sent
+        ? 'ok'
+        : 'bad'
+
+  return <Badge tone={tone}>{parts.join(' · ')}</Badge>
+}
+
+function DispatchDiagnostics({ info, lang }: { info: any; lang: Lang }) {
+  const stats = getDispatchStats(info)
+
+  if (!stats) {
+    return (
+      <div className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-5 text-red-800">
+        <div className="font-black">
+          {lang === 'zh' ? '派单未创建' : 'Dispatch was not created'}
+        </div>
+        <div className="mt-1">
+          {lang === 'zh'
+            ? '可能原因：需求尚未进入派单流程、系统派单关闭、没有匹配到服务商，或该需求尚未被 cron 处理。'
+            : 'Possible causes: the lead has not entered dispatch, dispatch is paused, no provider matched, or cron has not processed this lead yet.'}
+        </div>
+      </div>
+    )
+  }
+
+  const hasAnyNotification =
+    stats.total ||
+    stats.sent ||
+    stats.failed ||
+    stats.pending ||
+    stats.skipped ||
+    stats.emailPending ||
+    stats.emailSent ||
+    stats.emailFailed ||
+    stats.smsPending ||
+    stats.smsSent ||
+    stats.smsFailed
+
+  if (!hasAnyNotification) {
+    return (
+      <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+        <div className="font-black">
+          {lang === 'zh' ? '未找到可派单通知' : 'No dispatch notifications found'}
+        </div>
+        <div className="mt-1">
+          {lang === 'zh'
+            ? '建议检查：服务类型映射、社区/区域匹配、服务商是否已审核启用、是否退订邮件、派单通道是否开启。'
+            : 'Check service type mapping, community/area matching, approved/active providers, email subscription, and dispatch channel settings.'}
+        </div>
+      </div>
+    )
+  }
+
+  const detailChips: Array<[string, number, 'ok' | 'bad' | 'mid' | 'neutral']> = []
+
+  if (stats.emailSent || stats.emailFailed || stats.emailPending) {
+    detailChips.push([lang === 'zh' ? 'Email 已发送' : 'Email sent', stats.emailSent, 'ok'])
+    detailChips.push([lang === 'zh' ? 'Email 失败' : 'Email failed', stats.emailFailed, stats.emailFailed ? 'bad' : 'neutral'])
+    detailChips.push([lang === 'zh' ? 'Email 待发送' : 'Email pending', stats.emailPending, stats.emailPending ? 'mid' : 'neutral'])
+  }
+
+  if (stats.smsSent || stats.smsFailed || stats.smsPending) {
+    detailChips.push([lang === 'zh' ? 'SMS 已发送' : 'SMS sent', stats.smsSent, 'ok'])
+    detailChips.push([lang === 'zh' ? 'SMS 失败' : 'SMS failed', stats.smsFailed, stats.smsFailed ? 'bad' : 'neutral'])
+    detailChips.push([lang === 'zh' ? 'SMS 待发送' : 'SMS pending', stats.smsPending, stats.smsPending ? 'mid' : 'neutral'])
+  }
+
+  let message = ''
+
+  if (stats.failed) {
+    message =
+      lang === 'zh'
+        ? '存在发送失败。优先检查邮件/SMS通道、服务商联系方式、退订状态和 provider_notifications 错误记录。'
+        : 'Some sends failed. Check email/SMS channel, provider contact details, subscription status, and provider_notifications errors.'
+  } else if (stats.pending) {
+    message =
+      lang === 'zh'
+        ? '仍有待发送通知。等待 cron 或点击派出积压需求前，先确认平台派单开关和通道设置。'
+        : 'Some notifications are still pending. Check dispatch settings and channel before running pending dispatch.'
+  } else if (stats.skipped) {
+    message =
+      lang === 'zh'
+        ? '有通知被跳过。通常是退订、未启用、未审核、重复通知或通道不可用导致。'
+        : 'Some notifications were skipped, usually due to opt-out, inactive/unapproved provider, duplicate notification, or unavailable channel.'
+  } else {
+    message =
+      lang === 'zh'
+        ? '派单状态正常。'
+        : 'Dispatch looks healthy.'
+  }
+
+  return (
+    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-700">
+      <div className="flex flex-wrap gap-1">
+        {detailChips.map(([label, value, tone]) => (
+          <Badge key={label} tone={tone}>
+            {label}: {value}
+          </Badge>
+        ))}
+      </div>
+      <div className="mt-2 font-semibold">{message}</div>
+    </div>
+  )
 }
 
 function PhotosBadge({ lead, lang }: { lead: AnyRecord; lang: Lang }) {
@@ -993,6 +1176,7 @@ export default function AdminApp() {
                         <div className="text-sm text-slate-500">{escText(lead.community_or_postal || lead.area)}</div>
                         <div className="mt-2">
                           <DispatchBadge info={lead.dispatch_status} lang={lang} />
+                          <DispatchDiagnostics info={lead.dispatch_status} lang={lang} />
                         </div>
                         <PhotosBadge lead={lead} lang={lang} />
                       </td>
