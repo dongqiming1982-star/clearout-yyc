@@ -527,7 +527,7 @@ function DispatchDiagnostics({ info, lang }: { info: any; lang: Lang }) {
   if (stats.failed) {
     message =
       lang === 'zh'
-        ? '存在发送失败。优先检查邮件/SMS通道、服务商联系方式、退订状态和 provider_notifications 错误记录。'
+        ? '存在发送失败。优先检查邮件/SMS通道、服务商联系方式、退订状态和通知记录里的错误信息。'
         : 'Some sends failed. Check email/SMS channel, provider contact details, subscription status, and provider_notifications errors.'
   } else if (stats.pending) {
     message =
