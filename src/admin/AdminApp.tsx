@@ -169,27 +169,27 @@ const TEXT = {
     today: '今日',
     thisMonth: '本月',
     provider: '服务商',
-    business: 'Business',
-    contact: 'Contact',
-    email: 'Email',
-    phone: 'Phone',
-    emailNotifications: 'Email notifications',
-    smsNotifications: 'SMS notifications',
-    status: 'Status',
-    created: 'Created',
+    business: '商家',
+    contact: '联系人',
+    email: '邮箱',
+    phone: '电话',
+    emailNotifications: '邮件通知',
+    smsNotifications: '短信通知',
+    status: '状态',
+    created: '创建时间',
     actions: '操作',
-    approve: 'Approve',
-    activate: 'Activate',
-    suspend: 'Suspend',
-    subscribed: 'Subscribed',
-    unsubscribed: 'Unsubscribed',
-    resubscribed: 'Resubscribed',
-    optedIn: 'Opted in',
-    optedOut: 'Opted out',
-    approved: 'approved',
-    pending: 'pending',
-    active: 'active',
-    inactive: 'inactive',
+    approve: '审核通过',
+    activate: '启用',
+    suspend: '暂停',
+    subscribed: '已订阅',
+    unsubscribed: '已退订',
+    resubscribed: '已重新订阅',
+    optedIn: '已开启',
+    optedOut: '已关闭',
+    approved: '已审核',
+    pending: '待审核',
+    active: '启用',
+    inactive: '停用',
     lead: '需求',
     customer: '客户',
     task: '任务',
@@ -372,7 +372,7 @@ function DispatchBadge({ info, lang }: { info: any; lang: Lang }) {
   const parts = [`${t.dispatch}: ${channel || '—'}`, `${t.total} ${total}`]
   if (sent) parts.push(`${t.sent} ${sent}`)
   if (failed) parts.push(`${t.failed} ${failed}`)
-  if (pending) parts.push(`pending ${pending}`)
+  if (pending) parts.push(`${lang === 'zh' ? '待发送' : 'pending'} ${pending}`)
 
   return <Badge tone={failed ? 'bad' : sent ? 'ok' : 'mid'}>{parts.join(' · ')}</Badge>
 }
@@ -385,7 +385,7 @@ function PhotosBadge({ lead, lang }: { lead: AnyRecord; lang: Lang }) {
   return (
     <div className="mt-2">
       <Badge tone={expired ? 'bad' : 'ok'}>
-        {TEXT[lang].photos}: {count}{expired ? ` · expired ${expired}` : ''}
+        {TEXT[lang].photos}: {count}{expired ? ` · ${lang === 'zh' ? '已过期' : 'expired'} ${expired}` : ''}
       </Badge>
     </div>
   )
@@ -898,9 +898,9 @@ export default function AdminApp() {
                         <div className="font-black">{escText(provider.business_name)}</div>
                         <div className="text-sm text-slate-500">{escText(provider.public_id)}</div>
                         {provider.business_description ? <div className="text-sm text-slate-500">{escText(provider.business_description)}</div> : null}
-                        <div className="mt-1 text-sm text-slate-500">Areas: {escText(provider.service_areas)}</div>
-                        <div className="text-sm text-slate-500">Types: {escText(provider.service_types)}</div>
-                        {provider.daily_claim_limit ? <div className="text-sm text-slate-500">Daily limit: {escText(provider.daily_claim_limit)}</div> : null}
+                        <div className="mt-1 text-sm text-slate-500">{lang === 'zh' ? '服务区域' : 'Areas'}: {escText(provider.service_areas)}</div>
+                        <div className="text-sm text-slate-500">{lang === 'zh' ? '服务类型' : 'Types'}: {escText(provider.service_types)}</div>
+                        {provider.daily_claim_limit ? <div className="text-sm text-slate-500">{lang === 'zh' ? '每日认领上限' : 'Daily limit'}: {escText(provider.daily_claim_limit)}</div> : null}
                       </td>
                       <td className="px-4 py-4">{escText(provider.contact_name)}</td>
                       <td className="px-4 py-4">{escText(provider.email)}</td>
@@ -913,8 +913,8 @@ export default function AdminApp() {
                         ) : (
                           <Badge tone="ok">{t.subscribed}</Badge>
                         )}
-                        {provider.email_unsubscribed_at ? <div className="mt-1 text-xs text-slate-500">Off: {formatDate(provider.email_unsubscribed_at)}</div> : null}
-                        {provider.email_resubscribed_at ? <div className="mt-1 text-xs text-slate-500">On: {formatDate(provider.email_resubscribed_at)}</div> : null}
+                        {provider.email_unsubscribed_at ? <div className="mt-1 text-xs text-slate-500">{lang === 'zh' ? '关闭时间' : 'Off'}: {formatDate(provider.email_unsubscribed_at)}</div> : null}
+                        {provider.email_resubscribed_at ? <div className="mt-1 text-xs text-slate-500">{lang === 'zh' ? '开启时间' : 'On'}: {formatDate(provider.email_resubscribed_at)}</div> : null}
                       </td>
                       <td className="px-4 py-4">
                         {provider.notify_by_sms === true && !provider.sms_opt_out_at ? (
@@ -922,8 +922,8 @@ export default function AdminApp() {
                         ) : (
                           <Badge tone="bad">{t.optedOut}</Badge>
                         )}
-                        {provider.sms_opt_out_at ? <div className="mt-1 text-xs text-slate-500">Off: {formatDate(provider.sms_opt_out_at)}</div> : null}
-                        {provider.sms_opt_in_at ? <div className="mt-1 text-xs text-slate-500">On: {formatDate(provider.sms_opt_in_at)}</div> : null}
+                        {provider.sms_opt_out_at ? <div className="mt-1 text-xs text-slate-500">{lang === 'zh' ? '关闭时间' : 'Off'}: {formatDate(provider.sms_opt_out_at)}</div> : null}
+                        {provider.sms_opt_in_at ? <div className="mt-1 text-xs text-slate-500">{lang === 'zh' ? '开启时间' : 'On'}: {formatDate(provider.sms_opt_in_at)}</div> : null}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-1">
