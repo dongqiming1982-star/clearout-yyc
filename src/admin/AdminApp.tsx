@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { adminGet, adminPost, type AdminResource } from './adminApi'
 
 type AnyRecord = Record<string, any>
@@ -406,13 +406,14 @@ function JsonPanel({ title, data }: { title: string; data: any }) {
 
 export default function AdminApp() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('clearout_admin_lang_v30') as Lang) || 'zh')
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
+  const [token, setToken] = useState('')
   const [activeTab, setActiveTab] = useState<'providers' | 'leads' | 'claims' | 'raw'>('providers')
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [data, setData] = useState<Partial<Record<AdminResource, any>>>({})
+  const [hasLoaded, setHasLoaded] = useState(false)
 
   const t = TEXT[lang]
 
@@ -444,24 +445,19 @@ export default function AdminApp() {
       )
 
       setData(Object.fromEntries(results))
-      localStorage.setItem(TOKEN_KEY, cleanToken)
+      setHasLoaded(true)
 
       if (new URLSearchParams(window.location.search).has('admin2')) {
         window.history.replaceState(null, '', '/admin2')
       }
     } catch (err: any) {
+      setHasLoaded(false)
       setError(err?.message || 'Failed to load admin data.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (token) {
-      loadAll(token)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   function changeLang(next: Lang) {
     setLang(next)
@@ -472,6 +468,7 @@ export default function AdminApp() {
     localStorage.removeItem(TOKEN_KEY)
     setToken('')
     setData({})
+    setHasLoaded(false)
     setError('')
     setMessage('')
   }
@@ -568,6 +565,82 @@ export default function AdminApp() {
     ['claims', t.claims],
     ['raw', t.raw],
   ] as const
+
+  if (!hasLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-950">
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-black tracking-tight">{t.title}</h1>
+              <p className="mt-2 text-sm font-medium text-slate-600">
+                {lang === 'zh'
+                  ? '请输入 ADMIN_TOKEN 登录。未认证前不显示任何后台数据。'
+                  : 'Enter ADMIN_TOKEN to log in. No dashboard data is shown before authentication.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => changeLang('en')}
+                className={`rounded-full px-4 py-2 text-sm font-black ${lang === 'en' ? 'bg-red-700 text-white' : 'bg-white text-slate-900 ring-1 ring-slate-200'}`}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => changeLang('zh')}
+                className={`rounded-full px-4 py-2 text-sm font-black ${lang === 'zh' ? 'bg-red-700 text-white' : 'bg-white text-slate-900 ring-1 ring-slate-200'}`}
+              >
+                中文
+              </button>
+              <a
+                href="/admin/"
+                className="rounded-full bg-slate-100 px-4 py-2 text-center text-sm font-black text-slate-900"
+              >
+                {t.legacy}
+              </a>
+              <input
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                type="password"
+                placeholder="ADMIN_TOKEN"
+                className="w-full rounded-full border border-slate-300 bg-white px-4 py-2 text-sm outline-none focus:border-slate-900 sm:w-80"
+              />
+              <ActionButton onClick={() => loadAll()} disabled={loading}>
+                {loading ? t.loading : t.load}
+              </ActionButton>
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto max-w-[900px] px-5 py-12">
+          {error ? (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-bold text-red-800">
+              {error}
+            </div>
+          ) : null}
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 className="text-2xl font-black text-slate-950">
+              {lang === 'zh' ? '后台登录' : 'Admin Login'}
+            </h2>
+            <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
+              {lang === 'zh'
+                ? '输入 ADMIN_TOKEN 后点击加载。认证成功之前，不显示统计、总控、服务商、客户需求、认领记录或任何操作按钮。'
+                : 'Enter ADMIN_TOKEN and click Load. Before authentication succeeds, stats, controls, providers, leads, claims, and action buttons are hidden.'}
+            </p>
+            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+              {lang === 'zh'
+                ? '旧后台仍保留在 /admin/。新后台 /admin2 目前作为并行维护后台。'
+                : 'Legacy admin remains at /admin/. Admin2 is currently a parallel maintenance console.'}
+            </div>
+          </section>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
