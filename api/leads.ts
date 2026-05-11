@@ -19,6 +19,15 @@ function serviceTypeFromLead(lead: any) {
   return 'general_review'
 }
 
+
+async function hasRecentPhoneVerification(phone: string, verificationType: string) {
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+  const rows = await supabaseSelect<any>(
+    `verification_sessions?select=id,verified_at&phone=eq.${encodeURIComponent(phone)}&verification_type=eq.${encodeURIComponent(verificationType)}&status=eq.verified&verified_at=gte.${encodeURIComponent(since)}&order=verified_at.desc&limit=1`
+  )
+  return rows.length > 0
+}
+
 function mapLeadToRpc(lead: any, sourceUrl: string) {
   return {
     p_customer_name: String(lead?.customer_name || ''),
@@ -62,6 +71,21 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Please enter a valid Canadian phone number, such as 403-555-1234.' })
     }
 
+    if (!hasSupabaseConfig()) {
+      return res.status(500).json({
+        error: 'Phone verification is not configured. Please try again later.',
+        code: 'phone_verification_not_configured',
+      })
+    }
+
+    const phoneVerified = await hasRecentPhoneVerification(normalizedCustomerPhone, 'customer_lead')
+    if (!phoneVerified) {
+      return res.status(403).json({
+        error: 'Please verify your phone number before submitting your request.',
+        code: 'phone_not_verified',
+      })
+    }
+
     const normalizedCustomerEmail = normalizeOptionalEmail(lead.customer_email)
     if (normalizedCustomerEmail === null) {
       return res.status(400).json({ error: 'Please enter a valid email address, or leave this field blank.' })
@@ -92,6 +116,27 @@ export default async function handler(req: any, res: any) {
     if (hasSupabaseConfig()) {
       const created = await supabaseRpc<any>('create_public_lead', mapLeadToRpc(lead, sourceUrl))
       supabase = { skipped: false, result: created }
+
+      if (created?.lead_public_id) {
+        await supabasePatch(
+          'leads',
+          `public_id=eq.${encodeURIComponent(created.lead_public_id)}`,
+          {
+            phone_verified: true,
+            verification_status: 'verified',
+          }
+        )
+
+        supabase = {
+          ...supabase,
+          result: {
+            ...created,
+            phone_verified: true,
+            verification_status: 'verified',
+          },
+        }
+      }
+
       if (created?.accepted && created?.lead_public_id) {
         const photoPayload = Array.isArray(leadPhotos) ? leadPhotos.slice(0, 2) : []
         if (photoPayload.length) {

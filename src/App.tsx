@@ -1766,6 +1766,9 @@ function RequestForm({ lang }: { lang: Lang }) {
   const [photoError, setPhotoError] = useState('')
   const [phoneVerified, setPhoneVerified] = useState(false)
   const [otpSentAt, setOtpSentAt] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [otpMessage, setOtpMessage] = useState('')
   const [consent, setConsent] = useState(false)
   const [real, setReal] = useState(false)
   const [done, setDone] = useState<{ lead: Lead; dispatched: number } | null>(null)
@@ -1838,6 +1841,74 @@ function RequestForm({ lang }: { lang: Lang }) {
     setContact(prev => c ? { ...prev, community: c.name, area: c.area } : { ...prev, community: '', area: 'unknown' as Area })
   }
 
+  async function sendPhoneCode() {
+    setError('')
+    setOtpMessage('')
+
+    const normalizedCustomerPhone = normalizeNorthAmericanPhone(contact.phone)
+    if (!normalizedCustomerPhone) {
+      setError(lang === 'zh' ? '请输入有效的 10 位电话号码，例如 403-555-1234。' : 'Please enter a valid 10-digit phone number, such as 403-555-1234.')
+      return
+    }
+
+    try {
+      setOtpBusy(true)
+      await postRemoteJson('/api/verify/start', {
+        phone: normalizedCustomerPhone,
+        type: 'customer_lead',
+      })
+      setPhoneVerified(false)
+      setOtpSentAt(new Date().toISOString())
+      setOtpMessage(lang === 'zh' ? '验证码已发送，请查看手机短信。' : 'Verification code sent. Please check your phone.')
+    } catch (e) {
+      setOtpMessage('')
+      setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码发送失败，请稍后再试。' : 'Failed to send verification code. Please try again.'))
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  async function verifyPhoneCode() {
+    setError('')
+    setOtpMessage('')
+
+    const normalizedCustomerPhone = normalizeNorthAmericanPhone(contact.phone)
+    if (!normalizedCustomerPhone) {
+      setError(lang === 'zh' ? '请输入有效的 10 位电话号码，例如 403-555-1234。' : 'Please enter a valid 10-digit phone number, such as 403-555-1234.')
+      return
+    }
+
+    const code = otpCode.trim()
+    if (!/^\d{4,8}$/.test(code)) {
+      setError(lang === 'zh' ? '请输入短信验证码。' : 'Please enter the SMS verification code.')
+      return
+    }
+
+    try {
+      setOtpBusy(true)
+      const result = await postRemoteJson<{ ok?: boolean; verified?: boolean }>('/api/verify/check', {
+        phone: normalizedCustomerPhone,
+        code,
+        type: 'customer_lead',
+      })
+
+      if (!result?.verified) {
+        setPhoneVerified(false)
+        setError(lang === 'zh' ? '验证码不正确，请重试。' : 'The code is not valid. Please try again.')
+        return
+      }
+
+      setPhoneVerified(true)
+      setOtpMessage(lang === 'zh' ? '电话号码已验证。' : 'Phone number verified.')
+    } catch (e) {
+      setPhoneVerified(false)
+      setOtpMessage('')
+      setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码校验失败，请稍后再试。' : 'Failed to verify code. Please try again.'))
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
   async function submit() {
     setError('')
     if (submitting) return
@@ -1846,6 +1917,11 @@ function RequestForm({ lang }: { lang: Lang }) {
 
     const normalizedCustomerPhone = normalizeNorthAmericanPhone(contact.phone)
     if (!normalizedCustomerPhone) { setError(lang === 'zh' ? '请输入有效的 10 位电话号码，例如 403-555-1234。' : 'Please enter a valid 10-digit phone number, such as 403-555-1234.'); return }
+
+    if (!phoneVerified) {
+      setError(lang === 'zh' ? '请先完成手机短信验证。' : 'Please verify your phone number by SMS before submitting.')
+      return
+    }
 
     const normalizedCustomerEmail = normalizeOptionalEmail(contact.email)
     if (normalizedCustomerEmail === null) { setError(lang === 'zh' ? '请输入有效的邮箱地址，或留空。' : 'Please enter a valid email address, or leave this field blank.'); return }
@@ -1858,7 +1934,7 @@ function RequestForm({ lang }: { lang: Lang }) {
       lead_id: uid('lead'), customer_token: uid('customer').replace('customer_', ''), created_at: new Date().toISOString(), language: lang,
       status: classification.eligible ? 'submitted' : 'rejected_special_item',
       customer_name: contact.name.trim(), customer_phone: normalizedCustomerPhone, customer_email: normalizedCustomerEmail || '', community_slug: communitySlug === 'other' ? '' : communitySlug, community_or_postal: contact.community, area: contact.area,
-      consent_contact_share: consent, consent_real_request: real, customer_consent_at: consentAt, no_phone_spam_limit: 3, phone_verified: false, phone_verified_at: '', otp_sent_at: '', otp_attempts: 0, verification_method: 'manual_follow_up',
+      consent_contact_share: consent, consent_real_request: real, customer_consent_at: consentAt, no_phone_spam_limit: 3, phone_verified: phoneVerified, phone_verified_at: phoneVerified ? new Date().toISOString() : '', otp_sent_at: otpSentAt, otp_attempts: 0, verification_method: 'sms_otp',
       request_categories: categories, rough_amount: amount, item_location: location, timing, request_description: contact.description, photos,
       regular_special_items: regular, blocked_or_hazardous_items: blocked, service_tags: [normalizeLeadServiceType(categories)], risk_flags: classification.riskFlags,
       lead_grade: classification.grade, dispatch_eligible: classification.eligible, rejection_reason: classification.reason,
@@ -1926,12 +2002,62 @@ function RequestForm({ lang }: { lang: Lang }) {
       <div className="mt-5 rounded-[1.5rem] bg-red-50 p-4 ring-1 ring-red-100"><b className="text-red-950">{lang === 'zh' ? '危险/受限物品' : 'Hazardous / restricted items'}</b><div className="mt-3 grid gap-2 sm:grid-cols-2">{blockedItems.map(o => <ChoiceCard key={o.id} danger selected={blocked.includes(o.id)} onClick={() => setBlocked(toggleValue(blocked, o.id))} title={o[lang]} />)}</div>{blocked.length > 0 && <p className="mt-4 text-sm leading-6 text-red-900"><AlertTriangle className="mr-2 inline" size={16}/>{lang === 'zh' ? '这些物品可能需要 City of Calgary 特殊处理，不会作为普通清运单自动分发。' : 'These items may require City of Calgary special disposal and will not be auto-dispatched as a regular junk lead.'}</p>}</div>
 
       <StepTitle n="5" title={lang === 'zh' ? '联系方式' : 'Contact'} className="mt-8" />
-      <div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/><PhoneInput
-                    label={lang === 'zh' ? '电话' : 'Phone'}
-                    value={contact.phone}
-                    setValue={v => { setContact({ ...contact, phone: v }); setPhoneVerified(false); setOtpSentAt('') }}
-                    help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
-                  /><Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/><Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>{communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}<div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600"><b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>{areaName(contact.area, lang)}<p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；派单按 Calgary 大区匹配，不做社区硬匹配。' : 'Community pages pre-fill this field. Dispatch matches by Calgary area, not hard community boundaries.'}</p></div><Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/></div>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/>
+        <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-black/5">
+          <PhoneInput
+            label={lang === 'zh' ? '电话' : 'Phone'}
+            value={contact.phone}
+            setValue={v => {
+              setContact({ ...contact, phone: v })
+              setPhoneVerified(false)
+              setOtpSentAt('')
+              setOtpCode('')
+              setOtpMessage('')
+            }}
+            help={lang === 'zh' ? '国家码 +1 已固定。提交前必须短信验证。' : 'Country code +1 is fixed. SMS verification is required before submitting.'}
+          />
+          <div className="mt-3 grid gap-2">
+            <button
+              type="button"
+              onClick={sendPhoneCode}
+              disabled={otpBusy}
+              className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {otpBusy ? (lang === 'zh' ? '处理中…' : 'Working…') : (otpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code'))}
+            </button>
+            <input
+              value={otpCode}
+              onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              inputMode="numeric"
+              placeholder={lang === 'zh' ? '输入验证码' : 'Enter code'}
+              className="w-full rounded-full border border-black/10 px-4 py-2 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+            />
+            <button
+              type="button"
+              onClick={verifyPhoneCode}
+              disabled={otpBusy || !otpCode.trim()}
+              className="rounded-full bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {lang === 'zh' ? '验证' : 'Verify'}
+            </button>
+          </div>
+          <p className={`mt-2 text-xs font-semibold ${phoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
+            {phoneVerified
+              ? (lang === 'zh' ? '✓ 电话号码已验证' : '✓ Phone number verified')
+              : (otpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的手机号。' : 'We use the code only to confirm this phone number.'))}
+          </p>
+        </div>
+        <Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/>
+        <Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>
+        {communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>
+          {areaName(contact.area, lang)}
+          <p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；派单按 Calgary 大区匹配，不做社区硬匹配。' : 'Community pages pre-fill this field. Dispatch matches by Calgary area, not hard community boundaries.'}</p>
+        </div>
+        <Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/>
+      </div>
       <label className="mt-5 block">
         <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span>
         <textarea
@@ -1987,7 +2113,7 @@ function RequestForm({ lang }: { lang: Lang }) {
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
-      <button onClick={submit} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-base font-semibold text-white hover:bg-red-800 sm:w-auto">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (lang === 'zh' ? '提交免费需求' : 'Submit Free Request')}<ArrowRight size={18}/></button>
+      <button onClick={submit} disabled={submitting || !phoneVerified} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-base font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (phoneVerified ? (lang === 'zh' ? '提交免费需求' : 'Submit Free Request') : (lang === 'zh' ? '请先验证手机' : 'Verify phone first'))}<ArrowRight size={18}/></button>
     </div>
     <div className="space-y-5"><LeadGradeCard lang={lang} grade={classification.grade} fee={classification.fee} eligible={classification.eligible} risks={classification.riskFlags} /><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '提交前请了解' : 'Before you submit'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? 'Clearout YYC 是清运需求分发平台，不是清运公司。' : 'Clearout YYC is a junk removal request platform, not a junk removal company.'}</p><p>✔ {lang === 'zh' ? '你的需求最多发送给 3 个本地清运服务商。' : 'Your request may be shared with up to 3 local junk removal providers.'}</p><p>✔ {lang === 'zh' ? '你提交需求是免费的。' : 'Submitting a request is free.'}</p><p>✔ {lang === 'zh' ? '最终价格、时间、付款和服务由你和服务商直接确认。' : 'Final price, timing, payment, and service details are confirmed directly with the provider.'}</p></div></div></div>
   </div>
