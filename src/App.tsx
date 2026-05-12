@@ -1839,7 +1839,70 @@ function NotFoundPage({ lang }: { lang: Lang }) {
   </main>
 }
 
-function RequestPage({ lang }: { lang: Lang }) { return <main><PageHero eyebrow={lang === 'zh' ? '客户需求' : 'Customer request'} title={lang === 'zh' ? '免费提交清运需求' : 'Submit a free junk removal request'} text={lang === 'zh' ? '30 秒点选。你的需求最多发送给 3 个本地清运服务商。' : 'Tap through in about 30 seconds. Your request may be sent to up to 3 local providers.'} /><section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><RequestForm lang={lang} /></section></main> }
+function RequestPage({ lang }: { lang: Lang }) {
+  const zh = lang === 'zh'
+
+  const trustCards = zh
+    ? [
+        ['电话验证后提交', '手机短信验证用于减少假单和无效电话，让本地服务商更愿意联系真实客户。'],
+        ['最多 3 个服务商', '符合条件的需求最多可能分享给 3 个已审核通过且当前启用的本地清运服务商。'],
+        ['客户免费提交', 'Clearout YYC 不向客户收取提交费。最终价格、时间和付款由你和服务商直接确认。'],
+      ]
+    : [
+        ['Phone-verified request', 'SMS verification helps reduce fake requests and gives local providers more confidence to respond.'],
+        ['Up to 3 providers only', 'Eligible requests may be shared with up to 3 approved and active local junk removal providers.'],
+        ['Free for customers', 'Clearout YYC does not charge customers to submit. Final price, timing, and payment are confirmed directly with providers.'],
+      ]
+
+  return <main>
+    <PageHero
+      eyebrow={zh ? 'Calgary 客户需求' : 'Calgary customer request'}
+      title={zh ? '提交 Calgary 清运需求' : 'Submit a Calgary junk removal request'}
+      text={zh
+        ? '填写物品、区域、照片和电话验证。符合条件的需求可能发送给最多 3 个已审核通过且当前启用的本地清运服务商。'
+        : 'Tell us what needs to be removed, where it is, and verify your phone. Eligible requests may be shared with up to 3 approved and active local junk removal providers.'}
+    />
+
+    <section className="mx-auto max-w-6xl px-5 pt-8 sm:px-8 lg:px-10">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {trustCards.map(([title, body]) => (
+          <div key={title} className="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-black/5">
+            <h2 className="text-lg font-black tracking-tight text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 rounded-[2rem] bg-slate-950 p-6 text-white shadow-sm">
+        <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-red-300">
+              {zh ? '提交前请了解' : 'Before you submit'}
+            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
+              {zh ? '这是清运需求分发平台，不是清运公司' : 'This is a request platform, not a junk removal company'}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              {zh
+                ? '你的联系方式只用于匹配这次清运需求。Clearout YYC 不会公开发布你的电话号码，也不会群发给大量服务商。'
+                : 'Your contact details are used to help match this request. Clearout YYC does not publish your phone number or blast it to a large list.'}
+            </p>
+          </div>
+          <div className="rounded-[1.5rem] bg-white/10 p-5 text-sm leading-7 text-slate-200 ring-1 ring-white/10">
+            <p>✔ {zh ? '提交需求本身免费' : 'Submitting the request is free'}</p>
+            <p>✔ {zh ? '最多 3 个匹配服务商' : 'Up to 3 matched providers only'}</p>
+            <p>✔ {zh ? '服务商是否联系不作保证' : 'Provider response is not guaranteed'}</p>
+            <p>✔ {zh ? '价格、时间、付款由你和服务商确认' : 'Price, timing, and payment are arranged with the provider'}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-6xl px-5 py-10 sm:px-8 lg:px-10">
+      <RequestForm lang={lang} />
+    </section>
+  </main>
+}
 
 function ConfirmableSmsCaptchaBox({
   lang,
