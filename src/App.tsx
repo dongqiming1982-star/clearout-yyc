@@ -1339,8 +1339,8 @@ function applyStructuredData(route: Route, lang: Lang, path: string) {
 }
 
 function applySeo(route: Route, lang: Lang) {
-  let title = 'Junk Removal in Calgary | Clearout YYC'
-  let description = 'Submit a free Calgary junk removal request. Up to 3 local providers may contact you. No phone spam. No moving jobs.'
+  let title = 'Calgary Junk Removal, Furniture & Couch Removal | Clearout YYC'
+  let description = 'Submit a Calgary junk removal request for furniture removal, couch removal, basement clearout, garage cleanout, mattress removal, or move-out junk. Up to 3 approved local providers.'
   let path = window.location.pathname
   if (route.type === 'request') {
     title = 'Calgary Junk Removal Request | Clearout YYC'
@@ -1484,125 +1484,235 @@ function Header({ lang, setLang, menu, setMenu, route }: { lang: Lang; setLang: 
 }
 
 function HomePage({ lang }: { lang: Lang }) {
-  const L = copy[lang]
+  const zh = lang === 'zh'
+
+  const trustCards = zh
+    ? [
+        ['电话验证需求', '客户提交前需要完成手机短信验证，减少明显假单和无效电话。'],
+        ['照片和描述一起提交', '上传照片可以帮助服务商判断体积、搬运难度和是否适合接单。'],
+        ['最多 3 个服务商', '符合条件的需求最多可能分享给 3 个已审核通过且当前启用的本地清运服务商。'],
+        ['客户免费提交', 'Clearout YYC 不向客户收取提交费。价格、时间和付款由你和服务商直接确认。'],
+      ]
+    : [
+        ['Phone-verified requests', 'Customers verify their phone number before submitting, reducing obvious fake requests and bad numbers.'],
+        ['Photos and details included', 'Photos help providers judge size, access, labour, and whether the request fits their route.'],
+        ['Up to 3 providers only', 'Eligible requests may be shared with up to 3 approved and active local junk removal providers.'],
+        ['Free for customers', 'Clearout YYC does not charge customers to submit. Price, timing, and payment are confirmed directly with providers.'],
+      ]
+
+  const popularRequests = zh
+    ? [
+        ['家具清运', '沙发、桌椅、柜子、床架等常见家具清运需求。'],
+        ['沙发清运', '适合 couch removal Calgary、旧沙发、地下室或公寓沙发搬出。'],
+        ['地下室清理', '适合 basement clearout、杂物堆、储物间和搬家前清理。'],
+        ['车库清理', '适合 garage cleanout、纸箱、旧物、工具杂物和成堆垃圾。'],
+        ['床垫清运', '床垫、床架、卧室旧家具和搬家剩余物品。'],
+        ['搬家后清理', 'Move-out junk、租房退租、卖房前或搬家后的剩余物。'],
+      ]
+    : [
+        ['Furniture removal', 'Sofas, tables, chairs, cabinets, bed frames, and common household furniture.'],
+        ['Couch removal Calgary', 'Old couches, sectionals, basement sofas, apartment furniture, and bulky seating.'],
+        ['Basement clearout', 'Stored junk, boxes, old furniture, mixed household items, and pre-move cleanouts.'],
+        ['Garage cleanout', 'Garage piles, cardboard, old tools, household junk, and driveway-access pickups.'],
+        ['Mattress removal', 'Mattresses, bed frames, bedroom furniture, and move-out leftovers.'],
+        ['Move-out junk removal', 'Rental move-outs, home sale prep, estate leftovers, and last-minute junk piles.'],
+      ]
+
+  const steps = zh
+    ? [
+        ['1', '提交需求', '选择物品类型、数量、位置、时间，并尽量上传照片。'],
+        ['2', '电话验证', '短信验证码确认这是你的手机号，减少虚假需求。'],
+        ['3', '平台匹配', '系统根据区域、物品类型、车辆能力和服务商状态判断是否可分享。'],
+        ['4', '你直接确认', '服务商可能联系你确认价格、时间、付款和服务细节。'],
+      ]
+    : [
+        ['1', 'Submit request', 'Choose item type, rough size, location, timing, and add photos if possible.'],
+        ['2', 'Verify phone', 'SMS verification confirms the phone number and helps reduce fake requests.'],
+        ['3', 'Platform matching', 'The system checks area, item type, vehicle capacity, and provider status.'],
+        ['4', 'Confirm directly', 'Providers may contact you to confirm price, timing, payment, and service details.'],
+      ]
+
   return <main>
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 opacity-75 [background:radial-gradient(circle_at_10%_10%,#fee2e2,transparent_28%),radial-gradient(circle_at_88%_18%,#dcfce7,transparent_25%),radial-gradient(circle_at_50%_100%,#dbeafe,transparent_30%)]" />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_.95fr] lg:px-10 lg:py-24">
-        <div className="max-w-2xl">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/85 px-4 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-900/10"><Sparkles size={16} />{lang === 'zh' ? 'Calgary 本地清运需求分发' : 'Calgary local junk removal requests'}</p>
-          <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">{L.heroTitle}</h1>
-          <p className="mt-5 text-base leading-8 text-slate-700 sm:text-lg">{L.heroSub}</p>
+    <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:px-10 lg:py-20">
+      <div className="grid gap-8 lg:grid-cols-[1.08fr_.92fr] lg:items-center">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">
+            {zh ? 'Calgary 清运需求平台' : 'Calgary junk removal request platform'}
+          </p>
+          <h1 className="mt-5 max-w-4xl text-5xl font-black tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+            {zh ? 'Calgary 家具、沙发和地下室清理需求入口' : 'Calgary junk removal requests for furniture, couches, and basement clearouts'}
+          </h1>
+          <p className="mt-6 max-w-3xl text-lg font-semibold leading-9 text-slate-600">
+            {zh
+              ? '免费提交清运需求，添加照片并完成电话验证。符合条件的需求最多可能分享给 3 个已审核通过且当前启用的本地清运服务商。'
+              : 'Submit one free request with photos and phone verification. Eligible requests may be shared with up to 3 approved and active local junk removal providers.'}
+          </p>
+
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button onClick={() => go('/request')} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-7 py-4 text-base font-semibold text-white shadow-sm hover:bg-red-700">{L.heroCta}<ArrowRight size={18} /></button>
-            <button onClick={() => go('/providers')} className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-base font-semibold text-slate-900 ring-1 ring-black/10 hover:bg-red-50">{L.providerCta}<Users size={18} /></button>
+            <button onClick={() => go('/request')} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-8 py-4 text-base font-black text-white hover:bg-red-700">
+              {zh ? '免费提交需求' : 'Submit Free Request'} <ArrowRight size={18}/>
+            </button>
+            <button onClick={() => go('/areas')} className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-base font-black text-slate-950 ring-1 ring-black/10 hover:bg-slate-50">
+              {zh ? '查看服务范围' : 'View Service Areas'}
+            </button>
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-600">{lang === 'zh' ? '你的需求最多发送给 3 个服务商。不会群发。' : 'Your request is never sent to more than 3 providers. No blasting.'}</p>
+
+          <p className="mt-5 text-sm font-semibold leading-6 text-slate-500">
+            {zh ? '需要帮助或想反馈？' : 'Need help or have feedback?'}{' '}
+            <a className="text-red-700 underline underline-offset-4 hover:text-red-800" href="mailto:contact@aurorasitesolutions.com">
+              contact@aurorasitesolutions.com
+            </a>
+          </p>
         </div>
-        <HomeHeroVisual lang={lang} />
+
+        <div className="rounded-[2.5rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+          <div className="rounded-[2rem] bg-slate-950 p-6 text-white">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-red-300">
+              {zh ? '适合提交' : 'Good fit for'}
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight">
+              {zh ? '常见 Calgary 清运需求' : 'Common Calgary removal requests'}
+            </h2>
+            <div className="mt-5 grid gap-3 text-sm font-semibold text-slate-200">
+              <p>✔ {zh ? '家具清运 / 沙发清运' : 'Furniture removal / couch removal'}</p>
+              <p>✔ {zh ? '地下室清理 / 车库清理' : 'Basement clearout / garage cleanout'}</p>
+              <p>✔ {zh ? '床垫、纸箱、搬家后剩余物' : 'Mattresses, boxes, and move-out leftovers'}</p>
+              <p>✔ {zh ? '照片清楚、地址区域明确的真实需求' : 'Real requests with clear photos and location details'}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-[2rem] bg-red-50 p-5 text-sm leading-7 text-red-950 ring-1 ring-red-100">
+            <b>{zh ? '平台说明' : 'Platform note'}</b>
+            <p className="mt-2">
+              {zh
+                ? 'Clearout YYC 是清运需求分发平台，不是清运公司。服务商是否联系不作保证。最终价格、时间、付款和服务细节由你和服务商直接确认。'
+                : 'Clearout YYC is a request platform, not a junk removal company. Provider response is not guaranteed. Final price, timing, payment, and service details are arranged directly with providers.'}
+            </p>
+          </div>
+        </div>
       </div>
     </section>
-    <TrustStrip lang={lang} />
-    <ComparisonBlock lang={lang} />
-    <AcceptedRejectedBlock lang={lang} />
-    <HowItWorks lang={lang} />
-    <PopularServices lang={lang} />
-    <PopularAreas lang={lang} />
-    <ProviderCTA lang={lang} />
+
+    <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-8 lg:px-10">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {trustCards.map(([title, body]) => (
+          <div key={title} className="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-black/5">
+            <h2 className="text-lg font-black tracking-tight text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">
+              {zh ? '热门清运需求' : 'Popular Calgary removal requests'}
+            </p>
+            <h2 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
+              {zh ? '家具、沙发、地下室和车库清理' : 'Furniture, couch, basement, and garage cleanouts'}
+            </h2>
+          </div>
+          <button onClick={() => go('/request')} className="rounded-full bg-red-700 px-6 py-3 text-sm font-black text-white hover:bg-red-800">
+            {zh ? '提交这些需求' : 'Submit this type of request'}
+          </button>
+        </div>
+
+        <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {popularRequests.map(([title, body]) => (
+            <div key={title} className="rounded-[1.5rem] bg-slate-50 p-5 ring-1 ring-black/5">
+              <h3 className="text-xl font-black text-slate-950">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-8 lg:px-10">
+      <div className="grid gap-5 lg:grid-cols-[.95fr_1.05fr]">
+        <div className="rounded-[2.5rem] bg-slate-950 p-7 text-white shadow-sm sm:p-8">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-red-300">
+            {zh ? '流程' : 'How it works'}
+          </p>
+          <h2 className="mt-3 text-4xl font-black tracking-tight">
+            {zh ? '一次提交，服务商可能直接联系你' : 'Submit once. Providers may contact you directly.'}
+          </h2>
+          <div className="mt-7 grid gap-4">
+            {steps.map(([n, title, body]) => (
+              <div key={n} className="grid grid-cols-[2.5rem_1fr] gap-4 rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 text-sm font-black text-white">{n}</div>
+                <div>
+                  <h3 className="font-black text-white">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-300">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-5">
+          <div className="rounded-[2.5rem] bg-white p-7 shadow-sm ring-1 ring-black/5 sm:p-8">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">
+              {zh ? '隐私与体验' : 'Privacy and experience'}
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+              {zh ? '不会公开发布你的电话号码' : 'Your phone number is not publicly posted'}
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              {zh
+                ? '你的联系方式只用于匹配这次清运需求。Clearout YYC 不会公开发布你的电话号码，也不会群发给大量服务商。符合条件的需求最多只会分享给 3 个已审核通过且当前启用的本地服务商。'
+                : 'Your contact details are used to help match this request. Clearout YYC does not publish your phone number or blast it to a large list. Eligible requests may be shared with up to 3 approved and active local providers only.'}
+            </p>
+          </div>
+
+          <div className="rounded-[2.5rem] bg-red-700 p-7 text-white shadow-sm sm:p-8">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-100">
+              {zh ? '意见或问题反馈' : 'Feedback or concern'}
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight">
+              {zh ? '有问题，可以直接发邮件给平台' : 'Have a question? Email the platform.'}
+            </h2>
+            <p className="mt-4 text-sm font-semibold leading-7 text-red-50">
+              {zh
+                ? '如果你对提交需求、服务商联系、页面信息或平台体验有疑问，可以联系 Clearout YYC。我们会根据反馈改进平台体验。'
+                : 'If something about a request, provider contact, page information, or platform experience does not look right, contact Clearout YYC. Feedback helps improve the platform.'}
+            </p>
+            <a href="mailto:contact@aurorasitesolutions.com" className="mt-5 inline-flex rounded-full bg-white/15 px-5 py-3 text-sm font-black text-white ring-1 ring-white/20 hover:bg-white/20">
+              contact@aurorasitesolutions.com
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-6xl px-5 pb-16 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-7 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">
+              {zh ? '服务商入口' : 'Provider entry'}
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+              {zh ? '你是 Calgary 本地清运服务商？' : 'Are you a local Calgary junk removal provider?'}
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+              {zh
+                ? '加入免费 Beta 名单。审核通过并 active 后，可能收到匹配的电话验证客户需求提醒。'
+                : 'Join the free provider beta. After approval and active status, you may receive matching phone-verified customer request alerts.'}
+            </p>
+          </div>
+          <button onClick={() => go('/providers')} className="rounded-full bg-slate-950 px-7 py-4 text-sm font-black text-white hover:bg-red-700">
+            {zh ? '进入服务商页面' : 'Go to provider page'}
+          </button>
+        </div>
+      </div>
+    </section>
   </main>
 }
 
-
-function HomeHeroVisual({ lang }: { lang: Lang }) {
-  const scenarios = lang === 'zh'
-    ? [['车库杂物', '旧箱子、工具、季节物品'], ['床垫 / 沙发', '大件清走，客户不用逐家解释'], ['退租剩余', '房东或租客快速提交需求']]
-    : [['Garage junk', 'Boxes, tools, seasonal clutter'], ['Mattress / sofa', 'Large items without calling around'], ['Move-out leftovers', 'Quick request for landlords or renters']]
-  return <div className="rounded-[2.2rem] bg-white/90 p-4 shadow-xl ring-1 ring-black/5 sm:p-6">
-    <div className="rounded-[1.8rem] bg-slate-950 p-5 text-white sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-200">{lang === 'zh' ? '本地清运入口' : 'Local clearout request'}</p>
-          <h2 className="mt-3 text-3xl font-semibold">{lang === 'zh' ? '清楚、轻量、不会群发。' : 'Clear, local, and not blasted.'}</h2>
-        </div>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-red-100 ring-1 ring-white/10">YYC</span>
-      </div>
-      <div className="mt-6 grid gap-3">
-        {scenarios.map(([title, body]) => <div key={title} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10">
-          <div className="flex items-center justify-between gap-3"><b>{title}</b><Truck size={18} className="text-red-200"/></div>
-          <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
-        </div>)}
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-slate-200">
-        <div className="rounded-2xl bg-white/10 p-3"><Phone className="mx-auto mb-1 text-emerald-300" size={17}/>{lang === 'zh' ? '电话验证' : 'Phone verified'}</div>
-        <div className="rounded-2xl bg-white/10 p-3"><Users className="mx-auto mb-1 text-emerald-300" size={17}/>{lang === 'zh' ? '最多 3 个' : 'Max 3'}</div>
-        <div className="rounded-2xl bg-white/10 p-3"><MapPin className="mx-auto mb-1 text-emerald-300" size={17}/>{lang === 'zh' ? '按社区' : 'Area tagged'}</div>
-      </div>
-    </div>
-  </div>
-}
-
-function TrustStrip({ lang }: { lang: Lang }) {
-  const items = lang === 'zh' ? [
-    ['最多 3 个服务商', '避免电话轰炸'], ['只做清运', '不做搬家和贵重物品搬运'], ['先确认电话', '分享给服务商前先确认手机号'], ['本地社区匹配', '按 Calgary 区域分发'],
-  ] : [
-    ['Max 3 providers', 'No phone blasting'], ['Junk only', 'No moving or valuable-item transport'], ['Phone verified', 'Customer phone confirmed before dispatch'], ['Local matching', 'Dispatched by Calgary area'],
-  ]
-  return <section className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(([a,b]) => <div key={a} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5"><b>{a}</b><p className="mt-2 text-sm text-slate-600">{b}</p></div>)}</div></section>
-}
-
-function ComparisonBlock({ lang }: { lang: Lang }) {
-  const left = lang === 'zh' ? ['搜 5 家公司', '重复解释物品', '等回电', '担心被骚扰'] : ['Search 5 companies', 'Repeat the same details', 'Wait for callbacks', 'Risk phone spam']
-  const right = lang === 'zh' ? ['一次提交', '照片和描述一起发', '最多 3 个本地服务商', '你直接和服务商确认'] : ['Submit once', 'Photos and details included', 'Up to 3 local providers', 'Confirm directly with provider']
-  return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><SectionHead eyebrow={lang === 'zh' ? '旧方式 vs 简化方式' : 'Calling around vs submit once'} title={lang === 'zh' ? '把重复沟通变成一次提交。' : 'Turn repeated calls into one request.'} text={lang === 'zh' ? '你不需要把同一堆垃圾描述给五家公司。' : 'You should not have to describe the same pile of junk to five companies.'} />
-    <div className="mt-8 grid gap-5 md:grid-cols-2">
-      <CompareCard title={lang === 'zh' ? '自己找公司' : 'Calling companies yourself'} rows={left} muted />
-      <CompareCard title="Clearout YYC" rows={right} />
-    </div>
-  </section>
-}
-
-function AcceptedRejectedBlock({ lang }: { lang: Lang }) {
-  const ok = lang === 'zh' ? ['床垫 / 沙发 / 家具', '退租剩余杂物', '车库 / 地下室清理', '家电 / 电子废料', '庭院垃圾 / 树枝'] : ['Mattress / sofa / furniture', 'Move-out leftovers', 'Garage / basement cleanouts', 'Appliances / electronics', 'Yard waste / branches']
-  const blocked = lang === 'zh' ? ['油漆 / 化学品', '煤气罐', '机油 / 汽车电池', '石棉或不明危险物', '完整搬家 / 贵重物品运输'] : ['Paint / chemicals', 'Propane tanks', 'Motor oil / car batteries', 'Asbestos or unknown hazardous waste', 'Full moving / valuable-item transport']
-  return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
-    <SectionHead eyebrow={lang === 'zh' ? '清运边界' : 'Junk-only scope'} title={lang === 'zh' ? '我们只做普通清运需求分发。' : 'We distribute regular junk removal requests only.'} text={lang === 'zh' ? '危险物品、完整搬家和贵重物品运输不作为普通清运单自动分发。' : 'Hazardous items, full moving, and valuable-item transport are not dispatched as regular junk removal leads.'} />
-    <div className="mt-8 grid gap-5 md:grid-cols-2">
-      <div className="rounded-[1.5rem] bg-green-50 p-5"><h3 className="font-semibold text-green-950">{lang === 'zh' ? '适合提交' : 'Good fit'}</h3><ul className="mt-4 grid gap-2 text-sm text-green-900">{ok.map(x => <li key={x}>✔ {x}</li>)}</ul></div>
-      <div className="rounded-[1.5rem] bg-red-50 p-5"><h3 className="font-semibold text-red-950">{lang === 'zh' ? '不自动分发' : 'Not auto-dispatched'}</h3><ul className="mt-4 grid gap-2 text-sm text-red-900">{blocked.map(x => <li key={x}>⚠ {x}</li>)}</ul></div>
-    </div>
-  </div></section>
-}
-
-function HowItWorks({ lang }: { lang: Lang }) {
-  const steps = lang === 'zh' ? [
-    ['1', '提交需求', '选择清运类别、规模、位置，上传照片可选。'],
-    ['2', '系统分发', '符合条件的需求最多发送给 3 个 opt-in 服务商。'],
-    ['3', '直接联系', '服务商直接联系你确认价格、时间和服务细节。'],
-  ] : [
-    ['1', 'Submit request', 'Choose category, rough size, location, and optional photos.'],
-    ['2', 'System dispatches', 'Eligible requests go to up to 3 opt-in providers.'],
-    ['3', 'Providers contact you', 'Providers confirm final price, timing, and details directly.'],
-  ]
-  return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><SectionHead centered eyebrow={lang === 'zh' ? '流程' : 'How it works'} title={lang === 'zh' ? '简单，但边界清楚。' : 'Simple, with clear boundaries.'} text={lang === 'zh' ? 'Clearout YYC 不是清运公司，不处理付款和服务纠纷。' : 'Clearout YYC is not a junk removal company and does not handle payment or service disputes.'} />
-    <div className="mt-8 grid gap-5 md:grid-cols-3">{steps.map(([n,t,d]) => <div key={n} className="rounded-[1.7rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 font-semibold text-white">{n}</span><h3 className="mt-5 text-lg font-semibold">{t}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{d}</p></div>)}</div>
-  </section>
-}
-
-
-function PopularAreas({ lang }: { lang: Lang }) {
-  const featured = communities.slice(0, 12)
-  return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10">
-    <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <SectionHead eyebrow={lang === 'zh' ? 'Calgary 社区' : 'Popular Calgary areas'} title={lang === 'zh' ? '按社区提交清运需求。' : 'Junk removal pages by Calgary community.'} text={lang === 'zh' ? '社区页不是堆关键词；从社区页提交会自动带入社区和大区。' : 'Community pages are local request entry points; submissions are pre-filled with community and area.'} />
-        <button onClick={() => go('/areas')} className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700">{lang === 'zh' ? '查看全部区域' : 'View all areas'}</button>
-      </div>
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {featured.map(c => <button key={c.slug} onClick={() => go(communityUrl(c.slug))} className="rounded-2xl bg-[#faf7ef] p-4 text-left text-sm font-semibold text-slate-800 ring-1 ring-black/5 hover:bg-red-50 hover:text-red-700">{lang === 'zh' ? `${c.name} 清运` : `Junk removal in ${c.name}`}<span className="mt-1 block text-xs font-medium text-slate-500">{areaName(c.area, lang)}</span></button>)}
-      </div>
-    </div>
-  </section>
-}
 
 function AreasPage({ lang }: { lang: Lang }) {
   const groups: Area[] = ['central', 'nw', 'ne', 'sw', 'se']
@@ -1652,6 +1762,7 @@ function PopularServices({ lang }: { lang: Lang }) {
     </div>
   </section>
 }
+
 
 function ServicePage({ lang, slug }: { lang: Lang; slug: string }) {
   const service = getServiceBySlug(slug) || servicePages[0]
