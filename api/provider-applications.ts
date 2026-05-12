@@ -11,6 +11,15 @@ function asArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String).filter(Boolean) : []
 }
 
+
+async function hasRecentPhoneVerification(phone: string, verificationType: string) {
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+  const rows = await supabaseSelect<any>(
+    `verification_sessions?select=id,verified_at&phone=eq.${encodeURIComponent(phone)}&verification_type=eq.${encodeURIComponent(verificationType)}&status=eq.verified&verified_at=gte.${encodeURIComponent(since)}&order=verified_at.desc&limit=1`
+  )
+  return rows.length > 0
+}
+
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -40,6 +49,21 @@ export default async function handler(req: any, res: any) {
     const normalizedProviderPhone = normalizeNorthAmericanPhone(application.phone)
     if (!normalizedProviderPhone) {
       return res.status(400).json({ error: 'Please enter a valid business contact phone number, such as 403-555-1234.' })
+    }
+
+    if (!hasSupabaseConfig()) {
+      return res.status(500).json({
+        error: 'Phone verification is not configured. Please try again later.',
+        code: 'phone_verification_not_configured',
+      })
+    }
+
+    const phoneVerified = await hasRecentPhoneVerification(normalizedProviderPhone, 'provider_application')
+    if (!phoneVerified) {
+      return res.status(403).json({
+        error: 'Please verify your business phone number before submitting your provider application.',
+        code: 'provider_phone_not_verified',
+      })
     }
 
     const normalizedProviderEmail = normalizeEmail(application.email)

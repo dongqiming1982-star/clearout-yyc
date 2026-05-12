@@ -2175,7 +2175,80 @@ function ProviderForm({ lang }: { lang: Lang }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [providerPhoneVerified, setProviderPhoneVerified] = useState(false)
+  const [providerOtpSentAt, setProviderOtpSentAt] = useState('')
+  const [providerOtpCode, setProviderOtpCode] = useState('')
+  const [providerOtpBusy, setProviderOtpBusy] = useState(false)
+  const [providerOtpMessage, setProviderOtpMessage] = useState('')
   const manualCaptcha = useManualCaptcha()
+
+  async function sendProviderPhoneCode() {
+    setError('')
+    setProviderOtpMessage('')
+
+    const normalizedProviderPhone = normalizeNorthAmericanPhone(form.phone)
+    if (!normalizedProviderPhone) {
+      setError(lang === 'zh' ? '请输入有效的 10 位服务商联系电话，例如 403-555-1234。' : 'Please enter a valid 10-digit business phone number, such as 403-555-1234.')
+      return
+    }
+
+    try {
+      setProviderOtpBusy(true)
+      await postRemoteJson('/api/verify/start', {
+        phone: normalizedProviderPhone,
+        type: 'provider_application',
+      })
+      setProviderPhoneVerified(false)
+      setProviderOtpSentAt(new Date().toISOString())
+      setProviderOtpMessage(lang === 'zh' ? '验证码已发送，请查看手机短信。' : 'Verification code sent. Please check your phone.')
+    } catch (e) {
+      setProviderOtpMessage('')
+      setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码发送失败，请稍后再试。' : 'Failed to send verification code. Please try again.'))
+    } finally {
+      setProviderOtpBusy(false)
+    }
+  }
+
+  async function verifyProviderPhoneCode() {
+    setError('')
+    setProviderOtpMessage('')
+
+    const normalizedProviderPhone = normalizeNorthAmericanPhone(form.phone)
+    if (!normalizedProviderPhone) {
+      setError(lang === 'zh' ? '请输入有效的 10 位服务商联系电话，例如 403-555-1234。' : 'Please enter a valid 10-digit business phone number, such as 403-555-1234.')
+      return
+    }
+
+    const code = providerOtpCode.trim()
+    if (!/^\d{4,8}$/.test(code)) {
+      setError(lang === 'zh' ? '请输入短信验证码。' : 'Please enter the SMS verification code.')
+      return
+    }
+
+    try {
+      setProviderOtpBusy(true)
+      const result = await postRemoteJson<{ ok?: boolean; verified?: boolean }>('/api/verify/check', {
+        phone: normalizedProviderPhone,
+        code,
+        type: 'provider_application',
+      })
+
+      if (!result?.verified) {
+        setProviderPhoneVerified(false)
+        setError(lang === 'zh' ? '验证码不正确，请重试。' : 'The code is not valid. Please try again.')
+        return
+      }
+
+      setProviderPhoneVerified(true)
+      setProviderOtpMessage(lang === 'zh' ? '服务商电话已验证。' : 'Business phone verified.')
+    } catch (e) {
+      setProviderPhoneVerified(false)
+      setProviderOtpMessage('')
+      setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码校验失败，请稍后再试。' : 'Failed to verify code. Please try again.'))
+    } finally {
+      setProviderOtpBusy(false)
+    }
+  }
 
   async function submit() {
     setError('')
@@ -2184,6 +2257,11 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
     const normalizedProviderPhone = normalizeNorthAmericanPhone(form.phone)
     if (!normalizedProviderPhone) { setError(lang === 'zh' ? '请输入有效的 10 位服务商联系电话，例如 403-555-1234。' : 'Please enter a valid 10-digit business phone number, such as 403-555-1234.'); return }
+
+    if (!providerPhoneVerified) {
+      setError(lang === 'zh' ? '请先完成服务商电话短信验证。' : 'Please verify your business phone number by SMS before submitting.')
+      return
+    }
 
     const normalizedProviderEmail = normalizeEmail(form.email)
     if (!normalizedProviderEmail) { setError(lang === 'zh' ? '请输入有效的服务商邮箱地址。' : 'Please enter a valid business email address.'); return }
@@ -2224,12 +2302,50 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
   if (done) return <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-black/5"><CheckCircle2 className="text-green-700" size={36}/><h2 className="mt-4 text-3xl font-semibold">{lang === 'zh' ? '已加入 Beta 名单' : 'You are on the beta list'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '申请已提交。我们已经收到你的服务商申请。审核通过后，你会先收到邮件通知，然后才可能收到客户线索提醒。Beta 阶段不会收月费，也不需要下载 App。' : 'Application submitted. We received your provider application. If approved, you will receive an email notification before receiving customer lead alerts. During beta there is no monthly fee and no app.'}</p><button onClick={() => setDone(false)} className="mt-6 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white">{lang === 'zh' ? '继续编辑' : 'Add another'}</button></div>
 
-  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><PhoneInput
-                    label={lang === 'zh' ? '电话' : 'Phone'}
-                    value={form.phone}
-                    setValue={v => setForm({ ...form, phone: v })}
-                    help={lang === 'zh' ? '国家码 +1 已固定。请输入后面 10 位号码，例如 403-555-1234。' : 'Country code +1 is fixed. Enter the 10-digit number, for example 403-555-1234.'}
-                  /><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
+  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-black/5">
+                    <PhoneInput
+                      label={lang === 'zh' ? '电话' : 'Phone'}
+                      value={form.phone}
+                      setValue={v => {
+                        setForm({ ...form, phone: v })
+                        setProviderPhoneVerified(false)
+                        setProviderOtpSentAt('')
+                        setProviderOtpCode('')
+                        setProviderOtpMessage('')
+                      }}
+                      help={lang === 'zh' ? '国家码 +1 已固定。提交服务商申请前必须短信验证。' : 'Country code +1 is fixed. SMS verification is required before submitting.'}
+                    />
+                    <div className="mt-3 grid gap-2">
+                      <button
+                        type="button"
+                        onClick={sendProviderPhoneCode}
+                        disabled={providerOtpBusy}
+                        className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {providerOtpBusy ? (lang === 'zh' ? '处理中…' : 'Working…') : (providerOtpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code'))}
+                      </button>
+                      <input
+                        value={providerOtpCode}
+                        onChange={e => setProviderOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                        inputMode="numeric"
+                        placeholder={lang === 'zh' ? '输入验证码' : 'Enter code'}
+                        className="w-full rounded-full border border-black/10 px-4 py-2 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+                      />
+                      <button
+                        type="button"
+                        onClick={verifyProviderPhoneCode}
+                        disabled={providerOtpBusy || !providerOtpCode.trim()}
+                        className="rounded-full bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {lang === 'zh' ? '验证' : 'Verify'}
+                      </button>
+                    </div>
+                    <p className={`mt-2 text-xs font-semibold ${providerPhoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
+                      {providerPhoneVerified
+                        ? (lang === 'zh' ? '✓ 服务商电话已验证' : '✓ Business phone verified')
+                        : (providerOtpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的服务商联系电话。' : 'We use the code only to confirm this business phone number.'))}
+                    </p>
+                  </div><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
     <label className="mt-4 block">
       <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '服务商介绍（可选）' : 'Business introduction (optional)'}</span>
       <textarea
@@ -2247,7 +2363,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
     <div className="mt-6 grid gap-4 sm:grid-cols-2"><Select label={lang === 'zh' ? '人手能力' : 'Crew size'} value={form.crew} setValue={v => setForm({ ...form, crew: v as ProviderApplication['crew_capacity'] })} options={[{ id:'one', en:'1 person', zh:'1人' }, { id:'two', en:'2 people', zh:'2人' }, { id:'three_plus', en:'3+ people', zh:'3人以上' }]} lang={lang}/><Select label={lang === 'zh' ? '每日线索上限' : 'Daily lead limit'} value={String(form.daily)} setValue={v => setForm({ ...form, daily: Number(v) })} options={[{ id:'1', en:'1', zh:'1' }, { id:'3', en:'3', zh:'3' }, { id:'5', en:'5', zh:'5' }, { id:'20', en:'No limit beta', zh:'Beta 不限' }]} lang={lang}/></div>
     <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意 Clearout YYC 通过电话、邮件或未来短信向我发送清运线索通知；短信可随时 STOP 退订。' : 'I agree Clearout YYC may send lead notifications by phone, email, or future SMS. SMS can be stopped anytime.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={legal} onChange={e => setLegal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认本人/本业务有权在 Alberta 提供有偿清运服务，并自行负责保险、车辆、税务和处置规则。' : 'I confirm I am allowed to provide paid junk removal services in Alberta and am responsible for insurance, vehicle, tax, and disposal rules.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={dumping} onChange={e => setDumping(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意不会非法倾倒、遗弃或不当处理客户物品。' : 'I agree not to illegally dump, abandon, or improperly dispose of customer items.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我理解 Clearout YYC 是线索分发平台，不是清运公司、雇主或服务担保方；Beta 结束后的任何付费规则会在查看联系方式前显示。' : 'I understand Clearout YYC is a lead distribution platform, not a junk removal company, employer, or service guarantor; any future paid access rules will be shown before contact access.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
-      {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}<button onClick={submit} className="mt-6 rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (lang === 'zh' ? '加入免费 Beta 名单' : 'Join Free Beta List')}</button></div>
+      {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}<button onClick={submit} disabled={submitting || !providerPhoneVerified} className="mt-6 rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (providerPhoneVerified ? (lang === 'zh' ? '加入免费 Beta 名单' : 'Join Free Beta List') : (lang === 'zh' ? '请先验证手机' : 'Verify phone first'))}</button></div>
     <div className="space-y-5"><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '服务商规则' : 'Provider rules'}</h3><div className="mt-5 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? '先确认电话：客户需求在分享前会先确认手机号。' : 'Phone confirmation: customer phone is confirmed before dispatch.'}</p><p>✔ {lang === 'zh' ? 'Beta 免费：测试阶段免费接收客户电话。' : 'Free beta: receive customer contact free during testing.'}</p><p>✔ {lang === 'zh' ? '无 App、无月费、无登录后台。' : 'No app, no monthly fee, no dashboard login.'}</p><p>✔ {lang === 'zh' ? '未来如启用付费，查看联系方式前会清楚显示规则。' : 'If paid access is enabled later, terms are shown before contact release.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来付费原则' : 'Future paid access principles'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700"><p><b>{lang === 'zh' ? 'Beta 期间免费：' : 'Free during beta:'}</b> {lang === 'zh' ? '当前阶段先验证客户需求和服务商响应。' : 'This stage is for testing customer demand and provider response.'}</p><p><b>{lang === 'zh' ? '以后按需付费：' : 'Pay only if you choose:'}</b> {lang === 'zh' ? '如果未来开启付费，只有当你选择查看客户联系方式时才可能付费，无月费、无隐藏订阅。' : 'If paid access is enabled later, you may pay only when you choose to view a customer contact. No monthly fee or hidden subscription.'}</p><p><b>{lang === 'zh' ? '查看前明示：' : 'Shown before access:'}</b> {lang === 'zh' ? '共享/独家、已售人数、价格和退款/credit 规则会在查看联系方式前显示。' : 'Shared/exclusive status, sold count, price, and refund/credit rules will be shown before contact access.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来审核资料' : 'Future verification'}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '正式收费或 Verified 标识上线前，可补充商业保险、BN、Business ID、WCB 等文件。字段已在数据模型中保留。' : 'Before paid mode or verified badge, providers can add insurance, BN, Business ID, WCB, and other documents. Fields are already reserved in the data model.'}</p></div></div></div>
 }
 
