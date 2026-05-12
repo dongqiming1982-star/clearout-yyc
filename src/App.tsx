@@ -1359,8 +1359,8 @@ function applySeo(route: Route, lang: Lang) {
     description = 'This page does not exist. Return to Clearout YYC home, submit a request, or join the provider beta.'
   }
   if (route.type === 'areas') {
-    title = 'Calgary Junk Removal Areas | Clearout YYC'
-    description = 'Find Clearout YYC community pages for Calgary junk removal requests, including Beltline, Panorama Hills, Mahogany, Sage Hill, and more.'
+    title = 'Calgary Junk Removal Service Areas | Clearout YYC'
+    description = 'Browse Calgary junk removal service area entry pages. If your community is not listed, you can still submit a request with your community, postal code, or nearby landmark.'
   }
   if (route.type === 'service') {
     const service = getServiceBySlug(route.slug)
@@ -1715,52 +1715,130 @@ function HomePage({ lang }: { lang: Lang }) {
 
 
 function AreasPage({ lang }: { lang: Lang }) {
-  const groups: Area[] = ['central', 'nw', 'ne', 'sw', 'se']
+  const zh = lang === 'zh'
+
+  const grouped = communities.reduce((acc, community) => {
+    const found = acc.find(x => x.area === community.area)
+    if (found) found.items.push(community)
+    else acc.push({ area: community.area, items: [community] })
+    return acc
+  }, [] as Array<{ area: Area; items: typeof communities }>)
+
   return <main>
-    <PageHero eyebrow={lang === 'zh' ? '服务区域' : 'Service areas'} title={lang === 'zh' ? 'Calgary areas we cover' : 'Calgary areas we cover'} text={lang === 'zh' ? '选择你的社区，提交一个带社区标签的普通清运需求。社区页提交会自动带入社区和大区。' : 'Choose your area to submit a community-tagged junk removal request. Community pages pre-fill both community and area.'} />
-    <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10">
-      <div className="grid gap-7">
-        {groups.map(area => {
-          const rows = communities.filter(c => c.area === area)
-          if (!rows.length) return null
-          return <div key={area} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-7">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-red-700">{areaName(area, lang)}</p>
-                <h2 className="mt-2 text-2xl font-semibold">{lang === 'zh' ? `${areaName(area, lang)} 社区` : `${areaName(area, lang)} communities`}</h2>
-              </div>
-              <p className="text-sm text-slate-500">{lang === 'zh' ? '点击社区进入本地入口页' : 'Open a local request entry page'}</p>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rows.map(c => <button key={c.slug} onClick={() => go(communityUrl(c.slug))} className="rounded-[1.35rem] bg-[#faf7ef] p-5 text-left ring-1 ring-black/5 transition hover:bg-red-50 hover:ring-red-100">
-                <h3 className="text-lg font-semibold text-slate-950">{lang === 'zh' ? `${c.name} 清运` : `Junk Removal in ${c.name}`}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? c.noteZh : c.noteEn}</p>
-                <span className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-xs font-semibold text-red-700 ring-1 ring-red-100">{lang === 'zh' ? '提交社区需求' : 'Submit community request'}</span>
-              </button>)}
-            </div>
+    <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-7 shadow-sm ring-1 ring-black/5 sm:p-9">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-red-700">
+          {zh ? 'Calgary 服务区域' : 'Calgary service areas'}
+        </p>
+        <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+          {zh ? 'Calgary 清运需求服务区域' : 'Calgary junk removal service areas'}
+        </h1>
+        <p className="mt-5 max-w-3xl text-base font-semibold leading-8 text-slate-600">
+          {zh
+            ? '下面的社区和大区只是本地搜索入口和示例，不是完整服务边界。如果你在 Calgary，但没有看到自己的社区，也可以直接提交需求。'
+            : 'The areas and communities below are local search entry points and examples, not a hard coverage boundary. If you are in Calgary and do not see your community, you can still submit a request.'}
+        </p>
+
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <button onClick={() => go('/request')} className="inline-flex items-center justify-center gap-2 rounded-full bg-red-700 px-7 py-4 text-sm font-black text-white hover:bg-red-800">
+            {zh ? '直接提交 Calgary 清运需求' : 'Submit a Calgary Request'} <ArrowRight size={17}/>
+          </button>
+          <a href="#community-examples" className="inline-flex items-center justify-center rounded-full bg-slate-950 px-7 py-4 text-sm font-black text-white hover:bg-slate-800">
+            {zh ? '查看社区示例' : 'View community examples'}
+          </a>
+        </div>
+
+        <div className="mt-6 rounded-[1.5rem] bg-red-50 p-5 text-sm leading-7 text-red-950 ring-1 ring-red-100">
+          <b>{zh ? '找不到你的社区？' : 'Do not see your community?'}</b>
+          <p className="mt-2">
+            {zh
+              ? '没关系。进入提交页后，可以选择 Other / not sure，或手动填写你的社区、邮编或附近地标。系统按 Calgary 大区和服务商能力判断是否匹配。'
+              : 'That is okay. On the request form, choose Other / not sure, or enter your community, postal code, or nearby landmark. Matching is based on Calgary area and provider capability.'}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-6xl px-5 pb-12 sm:px-8 lg:px-10">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {grouped.map(group => (
+          <div key={group.area} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5">
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">
+              {zh ? 'Calgary 大区' : 'Calgary area'}
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+              {areaName(group.area, lang)}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {zh
+                ? '如果你大概在这个区域，可以直接提交需求。社区精确名称可以在表单里填写。'
+                : 'If you are roughly in this area, you can submit a request. Exact community details can be entered in the form.'}
+            </p>
+            <button onClick={() => go('/request')} className="mt-5 w-full rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-red-700">
+              {zh ? '提交这个大区的需求' : `Submit request in ${areaName(group.area, lang)}`}
+            </button>
           </div>
-        })}
+        ))}
+
+        <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-sm">
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-red-300">
+            {zh ? '不确定' : 'Not sure'}
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight">
+            {zh ? '不确定属于哪个大区？' : 'Not sure which area?'}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            {zh
+              ? '也可以直接提交。填写邮编、附近道路或社区名称即可。'
+              : 'You can still submit. Enter your postal code, nearby road, or community name.'}
+          </p>
+          <button onClick={() => go('/request')} className="mt-5 w-full rounded-full bg-red-700 px-5 py-3 text-sm font-black text-white hover:bg-red-800">
+            {zh ? '不确定，也要提交' : 'Not sure — submit anyway'}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="community-examples" className="mx-auto max-w-6xl scroll-mt-28 px-5 pb-16 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.18em] text-red-700">
+              {zh ? '社区入口示例' : 'Example community entry pages'}
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+              {zh ? '部分 Calgary 社区清运入口' : 'Some Calgary community request pages'}
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
+              {zh
+                ? '这些页面主要用于本地搜索入口。未列出的社区不代表不能提交。'
+                : 'These pages are mainly local search entry points. If a community is not listed, that does not mean requests cannot be submitted.'}
+            </p>
+          </div>
+          <button onClick={() => go('/request')} className="rounded-full bg-red-700 px-6 py-3 text-sm font-black text-white hover:bg-red-800">
+            {zh ? '提交其他社区需求' : 'Submit another community'}
+          </button>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {grouped.map(group => (
+            <div key={group.area} className="rounded-[2rem] bg-slate-50 p-5 ring-1 ring-black/5">
+              <h3 className="text-xl font-black text-slate-950">
+                {areaName(group.area, lang)}
+              </h3>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {group.items.map(c => (
+                  <button key={c.slug} onClick={() => go(communityUrl(c.slug))} className="rounded-2xl bg-white px-4 py-3 text-left text-sm font-bold text-slate-900 ring-1 ring-black/5 hover:bg-red-50 hover:text-red-700">
+                    {zh ? `${c.name} 清运需求` : `Junk removal in ${c.name}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   </main>
-}
-
-
-function PopularServices({ lang }: { lang: Lang }) {
-  return <section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10">
-    <div className="rounded-[2rem] bg-slate-950 p-6 text-white shadow-sm sm:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <SectionHead eyebrow={lang === 'zh' ? '服务类型' : 'Service pages'} title={lang === 'zh' ? '按清运类型提交需求。' : 'Submit by junk removal type.'} text={lang === 'zh' ? '服务类型页覆盖更直接的搜索意图，例如家具、车库、退租和装修尾料。' : 'Service pages cover high-intent searches like furniture removal, garage cleanouts, move-out clearouts, and renovation debris.'} />
-        <button onClick={() => go('/request')} className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-red-50">{lang === 'zh' ? '直接提交需求' : 'Submit request'}</button>
-      </div>
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {servicePages.map(service => <button key={service.slug} onClick={() => go(serviceUrl(service.slug))} className="rounded-2xl bg-white/10 p-4 text-left ring-1 ring-white/10 transition hover:bg-white hover:text-slate-950">
-          <h3 className="font-semibold">{lang === 'zh' ? service.titleZh.replace(' | Clearout YYC','') : service.titleEn.replace(' | Clearout YYC','')}</h3>
-          <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-300 group-hover:text-slate-600">{lang === 'zh' ? service.metaZh : service.metaEn}</p>
-        </button>)}
-      </div>
-    </div>
-  </section>
 }
 
 
