@@ -37,6 +37,7 @@ const PROVIDER_DESCRIPTION_MAX = 300
 type Lang = 'en' | 'zh'
 type Route =
   | { type: 'home' }
+  | { type: 'notFound' }
   | { type: 'request' }
   | { type: 'providerJoin' }
   | { type: 'providerLeads' }
@@ -1140,6 +1141,7 @@ function ManualCaptchaBox({ lang, captcha }: { lang: Lang; captcha: ManualCaptch
 
 function getRoute(): Route {
   const p = window.location.pathname
+  if (p === '/provider') { window.history.replaceState({}, '', '/providers'); return { type: 'providerJoin' } }
   if (p === '/request') return { type: 'request' }
   if (p === '/providers' || p === '/providers/join') return { type: 'providerJoin' }
   if (p === '/provider/lead') return { type: 'providerLead' }
@@ -1153,7 +1155,7 @@ function getRoute(): Route {
   if (community) return { type: 'community', slug: community.slug }
   if (p === '/privacy') return { type: 'privacy' }
   if (p === '/terms') return { type: 'terms' }
-  return { type: 'home' }
+  return { type: 'notFound' }
 }
 function go(path: string) { window.history.pushState({}, '', path); window.dispatchEvent(new Event('popstate')); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
@@ -1351,6 +1353,10 @@ function applySeo(route: Route, lang: Lang) {
     title = 'Provider Lead Access | Clearout YYC'
     description = 'Approved Clearout YYC beta providers can claim available Calgary junk removal leads.'
   }
+  if (route.type === 'notFound') {
+    title = 'Page Not Found | Clearout YYC'
+    description = 'This page does not exist. Return to Clearout YYC home, submit a request, or join the provider beta.'
+  }
   if (route.type === 'areas') {
     title = 'Calgary Junk Removal Areas | Clearout YYC'
     description = 'Find Clearout YYC community pages for Calgary junk removal requests, including Beltline, Panorama Hills, Mahogany, Sage Hill, and more.'
@@ -1373,6 +1379,7 @@ function applySeo(route: Route, lang: Lang) {
   }
   document.title = title
   upsertMeta('description', description)
+  upsertMeta('robots', route.type === 'notFound' ? 'noindex, follow' : 'index, follow')
   upsertMetaProperty('og:title', title)
   upsertMetaProperty('og:description', description)
   upsertMetaProperty('og:type', 'website')
@@ -1433,6 +1440,7 @@ export default function App() {
     {route.type === 'home' && <HomePage lang={lang} />}
     {route.type === 'request' && <RequestPage lang={lang} />}
     {route.type === 'providerJoin' && <ProviderPage lang={lang} />}
+    {route.type === 'notFound' && <NotFoundPage lang={lang} />}
     {route.type === 'providerLeads' && <ProviderLeadsPage lang={lang} />}
     {route.type === 'providerLead' && <ProviderLeadClaimPage lang={lang} />}
     {route.type === 'admin' && <AdminPage lang={lang} />}
@@ -1793,6 +1801,37 @@ function CommunityPage({ lang, slug }: { lang: Lang; slug: string }) {
           <p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '如果你不在这个社区，可以选择附近社区入口，或直接提交 Calgary 清运需求。' : 'If this is not your exact community, choose a nearby entry page or submit a general Calgary request.'}</p>
           <div className="mt-5 grid gap-3">{nearbyCommunities.map(n => <button key={n.slug} onClick={() => go(communityUrl(n.slug))} className="rounded-2xl bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 ring-1 ring-black/5 hover:bg-red-50 hover:text-red-700">{lang === 'zh' ? `${n.name} 清运需求` : `Junk removal in ${n.name}`}</button>)}</div>
           <button onClick={() => go(requestUrlForCommunity(c.slug))} className="mt-6 w-full rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700">{lang === 'zh' ? `提交 ${c.name} 需求` : `Submit a ${c.name} Request`}</button>
+        </div>
+      </div>
+    </section>
+  </main>
+}
+
+
+function NotFoundPage({ lang }: { lang: Lang }) {
+  const zh = lang === 'zh'
+  return <main>
+    <section className="mx-auto max-w-4xl px-5 py-20 text-center sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-8 shadow-sm ring-1 ring-black/5 sm:p-12">
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-red-700">404</p>
+        <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+          {zh ? '页面不存在' : 'Page not found'}
+        </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600">
+          {zh
+            ? '这个链接不存在，或者页面地址已经变更。你可以返回首页、提交清运需求，或加入服务商 Beta。'
+            : 'This page does not exist, or the address has changed. You can return home, submit a junk removal request, or join the provider beta.'}
+        </p>
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <button onClick={() => go('/')} className="rounded-full bg-slate-950 px-7 py-4 text-sm font-bold text-white hover:bg-slate-800">
+            {zh ? '返回首页' : 'Back to home'}
+          </button>
+          <button onClick={() => go('/request')} className="rounded-full bg-red-700 px-7 py-4 text-sm font-bold text-white hover:bg-red-800">
+            {zh ? '提交需求' : 'Submit request'}
+          </button>
+          <button onClick={() => go('/providers')} className="rounded-full bg-white px-7 py-4 text-sm font-bold text-slate-950 ring-1 ring-black/10 hover:bg-slate-50">
+            {zh ? '服务商 Beta' : 'Join provider beta'}
+          </button>
         </div>
       </div>
     </section>
