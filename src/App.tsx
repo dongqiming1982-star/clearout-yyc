@@ -1343,8 +1343,8 @@ function applySeo(route: Route, lang: Lang) {
   let description = 'Submit a free Calgary junk removal request. Up to 3 local providers may contact you. No phone spam. No moving jobs.'
   let path = window.location.pathname
   if (route.type === 'request') {
-    title = 'Submit a Free Junk Removal Request in Calgary | Clearout YYC'
-    description = 'Submit one free junk removal request in Calgary. Phone-verified requests may be sent to up to 3 local providers.'
+    title = 'Calgary Junk Removal Request | Clearout YYC'
+    description = 'Submit a phone-verified Calgary junk removal request with photos and details. Eligible requests may be shared with up to 3 approved and active local providers.'
   }
   if (route.type === 'providerJoin') {
     title = 'Calgary Junk Removal Leads for Providers | Clearout YYC'
