@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import twilio from 'twilio'
-import { supabaseInsert } from '../_lib/supabase.js'
+import { supabaseInsert, supabaseSelect } from '../_lib/supabase.js'
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
@@ -13,6 +13,8 @@ const ALLOWED_VERIFICATION_TYPES = new Set([
   'provider_application',
 ])
 
+const CODE_ACTIVE_MS = 10 * 60 * 1000
+
 function normalizePhone(raw: string) {
   return String(raw || '').replace(/[^\d+]/g, '')
 }
@@ -20,7 +22,17 @@ function normalizePhone(raw: string) {
 function getClientIp(req: VercelRequest) {
   const forwarded = req.headers['x-forwarded-for']
   if (Array.isArray(forwarded)) return forwarded[0] || ''
-  return String(forwarded || '')
+  return String(forwarded || '').split(',')[0].trim()
+}
+
+async function hasRecentSentCode(phone: string) {
+  const since = new Date(Date.now() - CODE_ACTIVE_MS).toISOString()
+
+  const rows = await supabaseSelect(
+    `verification_send_events?select=id,created_at&phone=eq.${encodeURIComponent(phone)}&status=eq.sent&created_at=gte.${encodeURIComponent(since)}&order=created_at.desc&limit=1`
+  )
+
+  return rows.length > 0
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -55,6 +67,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ok: false,
         error: 'invalid_phone',
         message: 'Please enter a valid Canadian or US phone number.',
+      })
+    }
+
+    const recentSent = await hasRecentSentCode(phone)
+
+    if (!recentSent) {
+      return res.status(400).json({
+        ok: false,
+        verified: false,
+        error: 'verification_code_expired_or_not_sent',
+        message: 'Please request a new verification code.',
       })
     }
 
