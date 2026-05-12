@@ -1344,8 +1344,8 @@ function applySeo(route: Route, lang: Lang) {
     description = 'Submit one free junk removal request in Calgary. Phone-verified requests may be sent to up to 3 local providers.'
   }
   if (route.type === 'providerJoin') {
-    title = 'Get Calgary Junk Removal Leads | Clearout YYC Providers'
-    description = 'Join the free beta provider list for Calgary junk removal leads. No app, no monthly fee, platform-managed lead alerts.'
+    title = 'Calgary Junk Removal Leads for Providers | Clearout YYC'
+    description = 'Join Clearout YYC’s free provider beta. Receive phone-verified Calgary junk removal requests by email or SMS. No app, no monthly fee, and no charge during beta.'
   }
   if (route.type === 'providerLeads') {
     title = 'Provider Lead Access | Clearout YYC'
@@ -2313,37 +2313,211 @@ function LeadGradeCard({ lang, grade, fee, eligible, risks }: { lang: Lang; grad
 }
 
 function ProviderPage({ lang }: { lang: Lang }) {
-  const cards = lang === 'zh'
-    ? [['无 App', '不用下载 App，不用维护复杂后台。'], ['短信接单', '附近清运需求可通过短信/邮件提醒。'], ['Beta 免费', '测试阶段免费接收电话已验证需求。']]
-    : [['No app', 'No app to download and no complex dashboard.'], ['SMS leads', 'Nearby junk removal requests by SMS/email.'], ['Free beta', 'Receive phone-verified requests free during beta.']]
+  const zh = lang === 'zh'
+
+  const heroCards = zh
+    ? [
+        ['电话验证客户需求', '客户提交前必须完成手机短信验证，减少明显假单和无效电话。'],
+        ['邮件 / 短信提醒', '审核通过并 active 的服务商，可能收到匹配的清运需求提醒。'],
+        ['Beta 阶段免费', '当前测试期无月费，接收或认领 Beta 线索不收费。'],
+        ['无需 App', '无需下载 App，也不需要维护复杂服务商后台。'],
+      ]
+    : [
+        ['Phone-verified requests', 'Customers must verify their phone number before submitting, reducing obvious fake requests and bad numbers.'],
+        ['Email / SMS alerts', 'Approved and active providers may receive matching junk removal request alerts.'],
+        ['Free during beta', 'No monthly fee and no charge to receive or claim beta leads during the test period.'],
+        ['No app required', 'No app to download and no complex provider dashboard to maintain.'],
+      ]
+
+  const steps = zh
+    ? [
+        ['1', '申请免费 Beta', '填写你的服务区域、可接清运类型、车辆能力和联系方式。'],
+        ['2', '我们审核服务商', '审核通过且 active 的服务商，才会进入匹配池。'],
+        ['3', '接收匹配提醒', '当电话验证客户需求匹配你的区域和类型时，可能通过邮件或短信提醒你。'],
+        ['4', '认领后联系客户', '通过认领链接查看客户联系方式，然后你和客户直接报价、安排时间。'],
+      ]
+    : [
+        ['1', 'Apply for the free beta', 'Tell us your service areas, accepted job types, vehicle capability, and contact details.'],
+        ['2', 'We review providers', 'Only approved and active providers enter the matching pool.'],
+        ['3', 'Receive matching alerts', 'When a phone-verified customer request matches your area and job types, we may alert you by email or SMS.'],
+        ['4', 'Claim and contact the customer', 'Use the claim link to view customer contact details, then quote and schedule directly with the customer.'],
+      ]
+
+  const benefits = zh
+    ? ['测试期免费', '没有月费', '不用安装 App', '没有强制承诺', '客户需求分发前先做电话验证', '你可以随时停止接收提醒']
+    : ['Free while we test the Calgary market', 'No monthly subscription', 'No app to install', 'No forced commitment', 'Customer requests are phone-verified before dispatch', 'You can stop receiving alerts anytime']
+
+  const expectations = zh
+    ? [
+        '能够在 Calgary 或周边区域提供清运服务。',
+        '自备车辆、工具，并自行负责保险、税务和处置规则。',
+        '不得非法倾倒、遗弃或不当处理客户物品。',
+        '不得误导报价、骚扰客户或重复拨打电话。',
+        'Clearout YYC 是线索分发平台，不是雇主或清运公司。',
+      ]
+    : [
+        'Able to provide junk removal service in Calgary or nearby areas.',
+        'Responsible for your own vehicle, tools, insurance, tax, and disposal rules.',
+        'No illegal dumping, abandoning, or improper disposal.',
+        'No misleading quotes, harassment, or repeated calls to customers.',
+        'Clearout YYC is a lead distribution platform, not an employer or junk removal company.',
+      ]
+
   return <main>
-    <section className="mx-auto max-w-6xl px-5 py-8 sm:px-8 lg:px-10">
-      <div className="grid gap-6 overflow-hidden rounded-[2.2rem] bg-slate-950 p-6 text-white shadow-sm sm:p-8 lg:grid-cols-[1.05fr_.95fr] lg:p-10">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-200">{lang === 'zh' ? '服务商 Beta' : 'Provider beta'}</p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{lang === 'zh' ? '不用 App，直接接收 Calgary 清运线索。' : 'No app. Just Calgary junk removal lead alerts.'}</h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">{lang === 'zh' ? '加入免费 Beta 名单。选择你愿意服务的大区、车辆能力和清运类型；符合条件、已确认的需求可通过短信/邮件提醒你。' : 'Join the free beta list. Choose your service areas, vehicle capacity, and job types; matching confirmed requests can be sent by SMS/email.'}</p>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row"><a href="#provider-form" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-semibold text-slate-950 hover:bg-red-50">{lang === 'zh' ? '加入免费 Beta' : 'Join free beta'}<ArrowRight size={18}/></a><a href="/api/provider/unsubscribe" className="inline-flex items-center justify-center rounded-full bg-white/10 px-7 py-4 font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">{lang === 'zh' ? '管理邮件通知' : 'Manage email preferences'}</a><button onClick={() => go('/faq')} className="rounded-full bg-white/10 px-7 py-4 font-semibold text-white ring-1 ring-white/10 hover:bg-white/15">FAQ</button></div>
+    <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10 lg:py-16">
+      <div className="grid gap-8 overflow-hidden rounded-[2.5rem] bg-slate-950 p-6 text-white shadow-sm sm:p-8 lg:grid-cols-[1.05fr_.95fr] lg:p-10">
+        <div className="flex flex-col justify-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-200">
+            {zh ? 'Clearout YYC 服务商 Beta' : 'Clearout YYC Provider Beta'}
+          </p>
+          <h1 className="mt-5 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
+            {zh ? '免费接收 Calgary 清运客户线索' : 'Get free Calgary junk removal leads during beta'}
+          </h1>
+          <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
+            {zh
+              ? 'Clearout YYC 将经过电话验证的客户清运需求，分发给本地清运服务商。免费加入 Beta，选择你的服务区域，通过邮件或短信接收匹配线索提醒。'
+              : 'Clearout YYC connects phone-verified customer requests with local junk removal providers. Join the free beta, choose your service areas, and receive matching lead alerts by email or SMS.'}
+          </p>
+          <p className="mt-4 text-xl font-black text-white">
+            {zh ? '无需 App。无月费。Beta 阶段免费。' : 'No app. No monthly fee. No charge during beta.'}
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <a href="#provider-form" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-4 font-bold text-slate-950 hover:bg-red-50">
+              {zh ? '加入免费 Beta' : 'Join Free Beta'}<ArrowRight size={18}/>
+            </a>
+            <a href="#provider-how" className="inline-flex items-center justify-center rounded-full bg-white/10 px-7 py-4 font-bold text-white ring-1 ring-white/10 hover:bg-white/15">
+              {zh ? '查看流程' : 'How it works'}
+            </a>
+            <a href="/api/provider/unsubscribe" className="inline-flex items-center justify-center rounded-full bg-white/10 px-7 py-4 font-bold text-white ring-1 ring-white/10 hover:bg-white/15">
+              {zh ? '管理邮件通知' : 'Manage email preferences'}
+            </a>
+          </div>
         </div>
-        <div className="grid gap-3">
-          {cards.map(([title, body]) => <div key={title} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/10"><b>{title}</b><p className="mt-2 text-sm leading-6 text-slate-300">{body}</p></div>)}
+
+        <div className="grid gap-4">
+          <div className="rounded-[2rem] bg-white p-5 text-slate-950 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-500">{zh ? '示例线索提醒' : 'Example lead alert'}</p>
+                <h2 className="mt-1 text-2xl font-black">{zh ? 'NW Calgary 清运需求' : 'NW Calgary junk removal request'}</h2>
+              </div>
+              <span className="rounded-full bg-red-700 px-3 py-1 text-xs font-black text-white">{zh ? '示例' : 'Sample'}</span>
+            </div>
+            <div className="mt-5 grid gap-3 text-sm">
+              {[
+                [zh ? '区域' : 'Area', 'NW Calgary'],
+                [zh ? '类型' : 'Job type', zh ? '床垫 / 家具' : 'Mattress / furniture'],
+                [zh ? '大小' : 'Size', zh ? '1–2 件' : '1–2 items'],
+                [zh ? '时间' : 'Timing', zh ? '本周' : 'This week'],
+                [zh ? '客户联系方式' : 'Customer contact', zh ? '认领成功后显示' : 'Shown after claim'],
+                [zh ? '认领方式' : 'Claim method', zh ? '邮件 / 短信内含认领链接' : 'Claim link included in email/SMS'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-black/5">
+                  <span className="font-semibold text-slate-500">{label}</span>
+                  <span className="text-right font-black text-slate-950">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] bg-red-700 p-5 text-white shadow-sm">
+            <h2 className="text-xl font-black">{zh ? 'Beta 系统已上线' : 'Beta system live'}</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-red-50">
+              {zh
+                ? '服务商审核、客户电话验证、邮件线索提醒已启用。'
+                : 'Provider approval, customer phone verification, and email lead alerts are enabled.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {heroCards.map(([title, body]) => (
+          <div key={title} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+            <b className="text-slate-950">{title}</b>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section id="provider-how" className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <h2 className="text-3xl font-black tracking-tight sm:text-4xl">{zh ? '流程很简单' : 'How it works'}</h2>
+        <div className="mt-7 grid gap-4 md:grid-cols-4">
+          {steps.map(([n, title, text]) => (
+            <div key={n} className="rounded-[1.75rem] bg-slate-50 p-5 ring-1 ring-black/5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-700 text-sm font-black text-white">{n}</div>
+              <h3 className="mt-5 text-lg font-black text-slate-950">{title}</h3>
+              <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{text}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
-    <section className="mx-auto max-w-6xl px-5 pb-2 sm:px-8 lg:px-10">
+
+    <section className="mx-auto grid max-w-7xl gap-6 px-5 py-8 sm:px-8 lg:grid-cols-2 lg:px-10">
+      <div className="rounded-[2.5rem] bg-slate-950 p-6 text-white shadow-sm sm:p-8">
+        <h2 className="text-3xl font-black tracking-tight sm:text-4xl">{zh ? '为什么现在加入 Beta？' : 'Why join during beta?'}</h2>
+        <p className="mt-4 text-base leading-7 text-slate-300">
+          {zh
+            ? '早期阶段的重点是建立本地服务商池。你不用先付费，也不用安装 App。'
+            : 'The early stage is about building a reliable local provider pool. You do not need to pay upfront or install an app.'}
+        </p>
+        <div className="mt-7 grid gap-3">
+          {benefits.map(item => (
+            <div key={item} className="rounded-2xl bg-white/10 p-4 text-sm font-semibold text-slate-200 ring-1 ring-white/10">
+              ✔ {item}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-[2.5rem] bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
+        <h2 className="text-3xl font-black tracking-tight sm:text-4xl">{zh ? '服务商基本要求' : 'Provider expectations'}</h2>
+        <div className="mt-7 grid gap-3">
+          {expectations.map(item => (
+            <div key={item} className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-700 ring-1 ring-black/5">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
+      <div className="rounded-[2.5rem] bg-red-700 p-6 text-white shadow-sm sm:p-8">
+        <h2 className="text-3xl font-black tracking-tight sm:text-4xl">{zh ? 'Beta 收费规则' : 'Beta pricing'}</h2>
+        <p className="mt-4 max-w-4xl text-base leading-8 text-red-50 sm:text-lg">
+          {zh
+            ? 'Clearout YYC 当前对审核通过的服务商免费测试。Beta 阶段无月费，接收或认领测试线索不收费。如果未来开启付费线索，价格和规则会在你查看客户联系方式前明确显示。'
+            : 'Clearout YYC is currently free for approved providers during beta. There is no monthly fee and no charge to receive or claim beta leads. If paid lead access is introduced later, the price and rules will be shown before you choose to access a customer contact.'}
+        </p>
+      </div>
+    </section>
+
+    <section className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
       <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">{lang === 'zh' ? '已经申请过服务商？' : 'Already applied as a provider?'}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{lang === 'zh' ? '输入你的服务商邮箱，即可获取安全链接来开启、关闭或管理 Clearout YYC 线索邮件。' : 'Enter your provider email to receive a secure link for turning Clearout YYC lead emails on or off.'}</p>
+            <h2 className="text-xl font-bold">{zh ? '已经申请过服务商？' : 'Already applied as a provider?'}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {zh
+                ? '输入你的服务商邮箱，即可获取安全链接来开启、关闭或管理 Clearout YYC 线索邮件。'
+                : 'Enter your provider email to receive a secure link for turning Clearout YYC lead emails on or off.'}
+            </p>
           </div>
-          <a href="/api/provider/unsubscribe" className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800">{lang === 'zh' ? '管理邮件通知' : 'Manage email preferences'}</a>
+          <a href="/api/provider/unsubscribe" className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-bold text-white hover:bg-slate-800">
+            {zh ? '管理邮件通知' : 'Manage email preferences'}
+          </a>
         </div>
       </div>
     </section>
-    <section id="provider-form" className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><ProviderForm lang={lang}/></section>
+
+    <section id="provider-form" className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10"><ProviderForm lang={lang}/></section>
   </main>
 }
+
 
 function ProviderForm({ lang }: { lang: Lang }) {
   const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', description: '', crew: 'one' as ProviderApplication['crew_capacity'], daily: 3 })
@@ -2492,7 +2666,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
   if (done) return <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-black/5"><CheckCircle2 className="text-green-700" size={36}/><h2 className="mt-4 text-3xl font-semibold">{lang === 'zh' ? '已加入 Beta 名单' : 'You are on the beta list'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '申请已提交。我们已经收到你的服务商申请。审核通过后，你会先收到邮件通知，然后才可能收到客户线索提醒。Beta 阶段不会收月费，也不需要下载 App。' : 'Application submitted. We received your provider application. If approved, you will receive an email notification before receiving customer lead alerts. During beta there is no monthly fee and no app.'}</p><button onClick={() => setDone(false)} className="mt-6 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white">{lang === 'zh' ? '继续编辑' : 'Add another'}</button></div>
 
-  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
+  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '加入免费服务商 Beta' : 'Join the free provider beta'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '填写一次申请。审核通过后，你可能收到匹配的电话验证客户需求。' : 'Apply once. If approved, you may receive matching phone-verified customer requests during beta.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
     <label className="mt-4 block">
       <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '服务商介绍（可选）' : 'Business introduction (optional)'}</span>
       <textarea
