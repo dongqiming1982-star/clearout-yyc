@@ -1054,8 +1054,61 @@ function manualCaptchaPayload(state: ManualCaptchaState) {
   }
 }
 
+async function confirmManualCaptchaChallenge(state: ManualCaptchaState) {
+  const response = await fetch(`${API_BASE_URL}/api/manual-captcha`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({ manualCaptcha: manualCaptchaPayload(state) }),
+  })
+
+  const data = await response.json().catch(() => null)
+  if (!response.ok || !data?.verified) {
+    throw new Error(data?.message || data?.error || 'Verification answer is incorrect.')
+  }
+
+  return true
+}
+
 function isManualCaptchaReady(state: ManualCaptchaState) {
   return Boolean(state.challenge && state.answer.trim())
+}
+
+const OTP_VALID_SECONDS = 10 * 60
+
+function formatCountdown(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds))
+  const minutes = Math.floor(safe / 60)
+  const rest = safe % 60
+  return `${minutes}:${String(rest).padStart(2, '0')}`
+}
+
+function useOtpCountdown(sentAt: string, validSeconds = OTP_VALID_SECONDS) {
+  const [secondsLeft, setSecondsLeft] = useState(0)
+
+  useEffect(() => {
+    if (!sentAt) {
+      setSecondsLeft(0)
+      return
+    }
+
+    const update = () => {
+      const sentAtMs = new Date(sentAt).getTime()
+      if (!Number.isFinite(sentAtMs)) {
+        setSecondsLeft(0)
+        return
+      }
+
+      const next = Math.max(0, Math.ceil((validSeconds * 1000 - (Date.now() - sentAtMs)) / 1000))
+      setSecondsLeft(next)
+    }
+
+    update()
+    const timer = window.setInterval(update, 1000)
+    return () => window.clearInterval(timer)
+  }, [sentAt, validSeconds])
+
+  return secondsLeft
 }
 
 function ManualCaptchaBox({ lang, captcha }: { lang: Lang; captcha: ManualCaptchaState }) {
@@ -1063,7 +1116,7 @@ function ManualCaptchaBox({ lang, captcha }: { lang: Lang; captcha: ManualCaptch
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <b className="text-sm text-slate-950">{lang === 'zh' ? '人工验证码' : 'Manual verification'}</b>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{lang === 'zh' ? '提交前请输入下面算式的答案，防止恶意提交。' : 'Enter the answer before submitting to reduce spam.'}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{lang === 'zh' ? '请输入下面算式的答案，防止恶意提交或短信滥发。' : 'Enter the answer to reduce spam and SMS abuse.'}</p>
       </div>
       <button type="button" onClick={() => captcha.refresh()} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-700 ring-1 ring-black/10 hover:bg-red-50" disabled={captcha.loading}>
         {captcha.loading ? (lang === 'zh' ? '刷新中…' : 'Refreshing…') : (lang === 'zh' ? '换一个' : 'Refresh')}
@@ -1748,6 +1801,108 @@ function CommunityPage({ lang, slug }: { lang: Lang; slug: string }) {
 
 function RequestPage({ lang }: { lang: Lang }) { return <main><PageHero eyebrow={lang === 'zh' ? '客户需求' : 'Customer request'} title={lang === 'zh' ? '免费提交清运需求' : 'Submit a free junk removal request'} text={lang === 'zh' ? '30 秒点选。你的需求最多发送给 3 个本地清运服务商。' : 'Tap through in about 30 seconds. Your request may be sent to up to 3 local providers.'} /><section className="mx-auto max-w-6xl px-5 py-12 sm:px-8 lg:px-10"><RequestForm lang={lang} /></section></main> }
 
+function ConfirmableSmsCaptchaBox({
+  lang,
+  captcha,
+  confirmed,
+  setConfirmed,
+}: {
+  lang: Lang
+  captcha: ManualCaptchaState
+  confirmed: boolean
+  setConfirmed: (v: boolean) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const confirm = async () => {
+    setMessage('')
+
+    if (!isManualCaptchaReady(captcha)) {
+      setConfirmed(false)
+      setMessage(lang === 'zh' ? '请先输入算式答案。' : 'Enter the answer first.')
+      return
+    }
+
+    try {
+      setBusy(true)
+      await confirmManualCaptchaChallenge(captcha)
+      setConfirmed(true)
+      setMessage('')
+    } catch (e) {
+      setConfirmed(false)
+      setMessage(e instanceof Error ? e.message : (lang === 'zh' ? '答案不正确，请重试。' : 'Incorrect answer. Please try again.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const refresh = async () => {
+    setConfirmed(false)
+    setMessage('')
+    await captcha.refresh()
+  }
+
+  if (confirmed) {
+    return (
+      <div className="mt-3 rounded-2xl bg-white p-4 ring-1 ring-green-200">
+        <div className="flex items-start gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100 text-sm font-black text-green-700">
+            ✓
+          </div>
+          <div>
+            <b className="block text-sm font-semibold text-green-800">
+              {lang === 'zh' ? '人机验证已通过' : 'Security check confirmed'}
+            </b>
+            <p className="mt-1 text-xs leading-5 text-green-700">
+              {lang === 'zh' ? '现在可以发送短信验证码。' : 'You can now send the SMS code.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return <div className="mt-3 rounded-2xl bg-white p-3 ring-1 ring-black/10">
+    <div className="grid gap-2 sm:grid-cols-[120px_1fr_auto_auto] sm:items-center">
+      <div className="flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-3 py-2 text-base font-bold text-white">
+        {captcha.challenge?.question || '...'}
+      </div>
+      <input
+        value={captcha.answer}
+        onChange={e => {
+          setConfirmed(false)
+          setMessage('')
+          captcha.setAnswer(e.target.value.replace(/\D/g, '').slice(0, 3))
+        }}
+        inputMode="numeric"
+        placeholder={lang === 'zh' ? '输入答案' : 'Enter answer'}
+        className="min-h-11 w-full rounded-xl border border-black/15 bg-white px-4 py-2 text-base font-semibold text-slate-950 caret-red-700 outline-none placeholder:text-slate-400 focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+      />
+      <button
+        type="button"
+        onClick={confirm}
+        disabled={busy}
+        className="min-h-11 rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {busy ? (lang === 'zh' ? '确认中' : 'Checking') : (lang === 'zh' ? '确认答案' : 'Confirm')}
+      </button>
+      <button
+        type="button"
+        onClick={refresh}
+        disabled={captcha.loading || busy}
+        className="min-h-11 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-black/10 hover:bg-red-50 disabled:opacity-60"
+      >
+        {captcha.loading ? (lang === 'zh' ? '刷新中' : 'Refreshing') : (lang === 'zh' ? '换题' : 'Refresh')}
+      </button>
+    </div>
+    <p className={`mt-2 text-xs font-semibold ${message ? 'text-red-700' : 'text-slate-500'}`}>
+      {message || (lang === 'zh' ? '先确认答案，然后才能发送短信验证码。' : 'Confirm the answer before sending SMS.')}
+    </p>
+  </div>
+}
+
+
 function RequestForm({ lang }: { lang: Lang }) {
   const params = new URLSearchParams(window.location.search)
   const initialCommunity = getCommunityBySlug(params.get('community'))
@@ -1775,6 +1930,9 @@ function RequestForm({ lang }: { lang: Lang }) {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const manualCaptcha = useManualCaptcha()
+  const smsCaptcha = useManualCaptcha()
+  const [smsCaptchaConfirmed, setSmsCaptchaConfirmed] = useState(false)
+  const otpSecondsLeft = useOtpCountdown(otpSentAt)
 
   const classification = useMemo(() => classifyLead({ categories, amount, timing, location, regular, blocked }), [categories, amount, timing, location, regular, blocked])
   const photoMetaFromPrepared = (items: PreparedLeadPhoto[]): FileMeta[] => items.map(p => ({
@@ -1851,15 +2009,23 @@ function RequestForm({ lang }: { lang: Lang }) {
       return
     }
 
+    if (!isManualCaptchaReady(smsCaptcha) || !smsCaptchaConfirmed) {
+      setError(lang === 'zh' ? '发送验证码前，请先确认电话区域的人机验证答案。' : 'Please confirm the phone verification answer before sending a code.')
+      return
+    }
+
     try {
       setOtpBusy(true)
       await postRemoteJson('/api/verify/start', {
         phone: normalizedCustomerPhone,
         type: 'customer_lead',
+        manualCaptcha: manualCaptchaPayload(smsCaptcha),
       })
       setPhoneVerified(false)
       setOtpSentAt(new Date().toISOString())
-      setOtpMessage(lang === 'zh' ? '验证码已发送，请查看手机短信。' : 'Verification code sent. Please check your phone.')
+      setOtpMessage(lang === 'zh' ? '验证码已发送，10 分钟内有效。' : 'Verification code sent. It is valid for 10 minutes.')
+      setSmsCaptchaConfirmed(false)
+      await smsCaptcha.refresh().catch(() => {})
     } catch (e) {
       setOtpMessage('')
       setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码发送失败，请稍后再试。' : 'Failed to send verification code. Please try again.'))
@@ -2004,50 +2170,6 @@ function RequestForm({ lang }: { lang: Lang }) {
       <StepTitle n="5" title={lang === 'zh' ? '联系方式' : 'Contact'} className="mt-8" />
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/>
-        <div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-black/5">
-          <PhoneInput
-            label={lang === 'zh' ? '电话' : 'Phone'}
-            value={contact.phone}
-            setValue={v => {
-              setContact({ ...contact, phone: v })
-              setPhoneVerified(false)
-              setOtpSentAt('')
-              setOtpCode('')
-              setOtpMessage('')
-            }}
-            help={lang === 'zh' ? '国家码 +1 已固定。提交前必须短信验证。' : 'Country code +1 is fixed. SMS verification is required before submitting.'}
-          />
-          <div className="mt-3 grid gap-2">
-            <button
-              type="button"
-              onClick={sendPhoneCode}
-              disabled={otpBusy}
-              className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {otpBusy ? (lang === 'zh' ? '处理中…' : 'Working…') : (otpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code'))}
-            </button>
-            <input
-              value={otpCode}
-              onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              inputMode="numeric"
-              placeholder={lang === 'zh' ? '输入验证码' : 'Enter code'}
-              className="w-full rounded-full border border-black/10 px-4 py-2 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
-            />
-            <button
-              type="button"
-              onClick={verifyPhoneCode}
-              disabled={otpBusy || !otpCode.trim()}
-              className="rounded-full bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {lang === 'zh' ? '验证' : 'Verify'}
-            </button>
-          </div>
-          <p className={`mt-2 text-xs font-semibold ${phoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
-            {phoneVerified
-              ? (lang === 'zh' ? '✓ 电话号码已验证' : '✓ Phone number verified')
-              : (otpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的手机号。' : 'We use the code only to confirm this phone number.'))}
-          </p>
-        </div>
         <Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/>
         <Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>
         {communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}
@@ -2110,6 +2232,70 @@ function RequestForm({ lang }: { lang: Lang }) {
           ))}
         </div>
       )}
+      <div className="mt-5 rounded-[1.5rem] bg-slate-50 p-4 ring-1 ring-black/5">
+        <div>
+          <b className="text-base text-slate-950">{lang === 'zh' ? '电话短信验证' : 'Phone SMS verification'}</b>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            {lang === 'zh' ? '请输入手机号，完成人机验证后接收短信验证码。' : 'Enter your phone number, complete the security check, then verify the SMS code.'}
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <PhoneInput
+            label={lang === 'zh' ? '电话' : 'Phone'}
+            value={contact.phone}
+            setValue={v => {
+              setContact({ ...contact, phone: v })
+              setPhoneVerified(false)
+              setOtpSentAt('')
+              setOtpCode('')
+              setOtpMessage('')
+              setSmsCaptchaConfirmed(false)
+            }}
+            help={lang === 'zh' ? '国家码 +1 已固定。提交前必须短信验证。' : 'Country code +1 is fixed. SMS verification is required before submitting.'}
+          />
+        </div>
+
+        <ConfirmableSmsCaptchaBox lang={lang} captcha={smsCaptcha} confirmed={smsCaptchaConfirmed} setConfirmed={setSmsCaptchaConfirmed} />
+
+        <div className="mt-3 grid gap-2 md:grid-cols-[160px_1fr_120px] md:items-center">
+          <button
+            type="button"
+            onClick={sendPhoneCode}
+            disabled={otpBusy || otpSecondsLeft > 0 || !smsCaptchaConfirmed}
+            className="h-11 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {otpBusy
+              ? (lang === 'zh' ? '处理中…' : 'Working…')
+              : (otpSecondsLeft > 0
+                ? (lang === 'zh' ? `已发送 ${formatCountdown(otpSecondsLeft)}` : `Sent ${formatCountdown(otpSecondsLeft)}`)
+                : (otpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code')))}
+          </button>
+
+          <input
+            value={otpCode}
+            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            inputMode="numeric"
+            placeholder={lang === 'zh' ? '输入短信验证码' : 'Enter SMS code'}
+            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-slate-950 caret-red-700 outline-none placeholder:text-slate-400 focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+          />
+
+          <button
+            type="button"
+            onClick={verifyPhoneCode}
+            disabled={otpBusy || !otpCode.trim()}
+            className="h-11 rounded-full bg-red-700 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {lang === 'zh' ? '验证' : 'Verify'}
+          </button>
+        </div>
+
+        <p className={`mt-2 text-xs font-semibold ${phoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
+          {phoneVerified
+            ? (lang === 'zh' ? '✓ 电话号码已验证' : '✓ Phone number verified')
+            : (otpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的手机号。' : 'We use the code only to confirm this phone number.'))}
+        </p>
+      </div>
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
@@ -2181,6 +2367,9 @@ function ProviderForm({ lang }: { lang: Lang }) {
   const [providerOtpBusy, setProviderOtpBusy] = useState(false)
   const [providerOtpMessage, setProviderOtpMessage] = useState('')
   const manualCaptcha = useManualCaptcha()
+  const smsCaptcha = useManualCaptcha()
+  const [providerSmsCaptchaConfirmed, setProviderSmsCaptchaConfirmed] = useState(false)
+  const providerOtpSecondsLeft = useOtpCountdown(providerOtpSentAt)
 
   async function sendProviderPhoneCode() {
     setError('')
@@ -2192,15 +2381,23 @@ function ProviderForm({ lang }: { lang: Lang }) {
       return
     }
 
+    if (!isManualCaptchaReady(smsCaptcha) || !providerSmsCaptchaConfirmed) {
+      setError(lang === 'zh' ? '发送验证码前，请先确认电话区域的人机验证答案。' : 'Please confirm the phone verification answer before sending a code.')
+      return
+    }
+
     try {
       setProviderOtpBusy(true)
       await postRemoteJson('/api/verify/start', {
         phone: normalizedProviderPhone,
         type: 'provider_application',
+        manualCaptcha: manualCaptchaPayload(smsCaptcha),
       })
       setProviderPhoneVerified(false)
       setProviderOtpSentAt(new Date().toISOString())
-      setProviderOtpMessage(lang === 'zh' ? '验证码已发送，请查看手机短信。' : 'Verification code sent. Please check your phone.')
+      setProviderOtpMessage(lang === 'zh' ? '验证码已发送，10 分钟内有效。' : 'Verification code sent. It is valid for 10 minutes.')
+      setProviderSmsCaptchaConfirmed(false)
+      await smsCaptcha.refresh().catch(() => {})
     } catch (e) {
       setProviderOtpMessage('')
       setError(e instanceof Error ? e.message : (lang === 'zh' ? '验证码发送失败，请稍后再试。' : 'Failed to send verification code. Please try again.'))
@@ -2302,8 +2499,7 @@ function ProviderForm({ lang }: { lang: Lang }) {
 
   if (done) return <div className="rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-black/5"><CheckCircle2 className="text-green-700" size={36}/><h2 className="mt-4 text-3xl font-semibold">{lang === 'zh' ? '已加入 Beta 名单' : 'You are on the beta list'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '申请已提交。我们已经收到你的服务商申请。审核通过后，你会先收到邮件通知，然后才可能收到客户线索提醒。Beta 阶段不会收月费，也不需要下载 App。' : 'Application submitted. We received your provider application. If approved, you will receive an email notification before receiving customer lead alerts. During beta there is no monthly fee and no app.'}</p><button onClick={() => setDone(false)} className="mt-6 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white">{lang === 'zh' ? '继续编辑' : 'Add another'}</button></div>
 
-  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/><div className="rounded-2xl bg-slate-50 p-4 ring-1 ring-black/5">
-                    <PhoneInput
+  return <div className="grid gap-6 lg:grid-cols-[1.05fr_.95fr]"><div className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-black/5 sm:p-7"><h2 className="text-3xl font-semibold">{lang === 'zh' ? '快速加入' : 'Quick opt-in'}</h2><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '免费 Beta 阶段。未来如有付费查看联系方式，付款前会清楚显示规则。' : 'Free beta. If paid contact access is introduced later, terms will be shown clearly before access.'}</p><div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label={lang === 'zh' ? '商户/个人名称' : 'Business or provider name'} value={form.name} setValue={v => setForm({ ...form, name: v })}/><Input label={lang === 'zh' ? '联系人' : 'Contact name'} value={form.contact} setValue={v => setForm({ ...form, contact: v })}/>                    <PhoneInput
                       label={lang === 'zh' ? '电话' : 'Phone'}
                       value={form.phone}
                       setValue={v => {
@@ -2312,40 +2508,10 @@ function ProviderForm({ lang }: { lang: Lang }) {
                         setProviderOtpSentAt('')
                         setProviderOtpCode('')
                         setProviderOtpMessage('')
+                        setProviderSmsCaptchaConfirmed(false)
                       }}
                       help={lang === 'zh' ? '国家码 +1 已固定。提交服务商申请前必须短信验证。' : 'Country code +1 is fixed. SMS verification is required before submitting.'}
-                    />
-                    <div className="mt-3 grid gap-2">
-                      <button
-                        type="button"
-                        onClick={sendProviderPhoneCode}
-                        disabled={providerOtpBusy}
-                        className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {providerOtpBusy ? (lang === 'zh' ? '处理中…' : 'Working…') : (providerOtpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code'))}
-                      </button>
-                      <input
-                        value={providerOtpCode}
-                        onChange={e => setProviderOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                        inputMode="numeric"
-                        placeholder={lang === 'zh' ? '输入验证码' : 'Enter code'}
-                        className="w-full rounded-full border border-black/10 px-4 py-2 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
-                      />
-                      <button
-                        type="button"
-                        onClick={verifyProviderPhoneCode}
-                        disabled={providerOtpBusy || !providerOtpCode.trim()}
-                        className="rounded-full bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {lang === 'zh' ? '验证' : 'Verify'}
-                      </button>
-                    </div>
-                    <p className={`mt-2 text-xs font-semibold ${providerPhoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
-                      {providerPhoneVerified
-                        ? (lang === 'zh' ? '✓ 服务商电话已验证' : '✓ Business phone verified')
-                        : (providerOtpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的服务商联系电话。' : 'We use the code only to confirm this business phone number.'))}
-                    </p>
-                  </div><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
+                    /><Input label="Email" value={form.email} setValue={v => setForm({ ...form, email: v })}/></div>
     <label className="mt-4 block">
       <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '服务商介绍（可选）' : 'Business introduction (optional)'}</span>
       <textarea
@@ -2362,6 +2528,59 @@ function ProviderForm({ lang }: { lang: Lang }) {
     <MultiSelect title={lang === 'zh' ? '车辆能力' : 'Vehicle capability'} options={vehicleOptions} selected={vehicles} setSelected={setVehicles} lang={lang}/>
     <div className="mt-6 grid gap-4 sm:grid-cols-2"><Select label={lang === 'zh' ? '人手能力' : 'Crew size'} value={form.crew} setValue={v => setForm({ ...form, crew: v as ProviderApplication['crew_capacity'] })} options={[{ id:'one', en:'1 person', zh:'1人' }, { id:'two', en:'2 people', zh:'2人' }, { id:'three_plus', en:'3+ people', zh:'3人以上' }]} lang={lang}/><Select label={lang === 'zh' ? '每日线索上限' : 'Daily lead limit'} value={String(form.daily)} setValue={v => setForm({ ...form, daily: Number(v) })} options={[{ id:'1', en:'1', zh:'1' }, { id:'3', en:'3', zh:'3' }, { id:'5', en:'5', zh:'5' }, { id:'20', en:'No limit beta', zh:'Beta 不限' }]} lang={lang}/></div>
     <div className="mt-6 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={smsConsent} onChange={e => setSmsConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意 Clearout YYC 通过电话、邮件或未来短信向我发送清运线索通知；短信可随时 STOP 退订。' : 'I agree Clearout YYC may send lead notifications by phone, email, or future SMS. SMS can be stopped anytime.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={legal} onChange={e => setLegal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认本人/本业务有权在 Alberta 提供有偿清运服务，并自行负责保险、车辆、税务和处置规则。' : 'I confirm I am allowed to provide paid junk removal services in Alberta and am responsible for insurance, vehicle, tax, and disposal rules.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={dumping} onChange={e => setDumping(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意不会非法倾倒、遗弃或不当处理客户物品。' : 'I agree not to illegally dump, abandon, or improperly dispose of customer items.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我理解 Clearout YYC 是线索分发平台，不是清运公司、雇主或服务担保方；Beta 结束后的任何付费规则会在查看联系方式前显示。' : 'I understand Clearout YYC is a lead distribution platform, not a junk removal company, employer, or service guarantor; any future paid access rules will be shown before contact access.'}</span></label></div>
+    <div className="mt-6 rounded-[1.5rem] bg-slate-50 p-4 ring-1 ring-black/5">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <b className="text-base text-slate-950">{lang === 'zh' ? '服务商电话短信验证' : 'Business phone SMS verification'}</b>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            {lang === 'zh' ? '确认资料后，请先验证服务商联系电话，再提交申请。' : 'After completing your details, verify the business phone before submitting.'}
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-slate-500">
+          {normalizeNorthAmericanPhone(form.phone) || (lang === 'zh' ? '请先填写电话' : 'Enter phone above')}
+        </span>
+      </div>
+
+      <ConfirmableSmsCaptchaBox lang={lang} captcha={smsCaptcha} confirmed={providerSmsCaptchaConfirmed} setConfirmed={setProviderSmsCaptchaConfirmed} />
+
+      <div className="mt-3 grid gap-2 md:grid-cols-[160px_1fr_120px] md:items-center">
+        <button
+          type="button"
+          onClick={sendProviderPhoneCode}
+          disabled={providerOtpBusy || providerOtpSecondsLeft > 0 || !providerSmsCaptchaConfirmed}
+          className="h-11 rounded-full bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {providerOtpBusy
+            ? (lang === 'zh' ? '处理中…' : 'Working…')
+            : (providerOtpSecondsLeft > 0
+              ? (lang === 'zh' ? `已发送 ${formatCountdown(providerOtpSecondsLeft)}` : `Sent ${formatCountdown(providerOtpSecondsLeft)}`)
+              : (providerOtpSentAt ? (lang === 'zh' ? '重新发送验证码' : 'Resend code') : (lang === 'zh' ? '发送验证码' : 'Send code')))}
+        </button>
+
+        <input
+          value={providerOtpCode}
+          onChange={e => setProviderOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+          inputMode="numeric"
+          placeholder={lang === 'zh' ? '输入短信验证码' : 'Enter SMS code'}
+          className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-slate-950 caret-red-700 outline-none placeholder:text-slate-400 focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+        />
+
+        <button
+          type="button"
+          onClick={verifyProviderPhoneCode}
+          disabled={providerOtpBusy || !providerOtpCode.trim()}
+          className="h-11 rounded-full bg-red-700 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {lang === 'zh' ? '验证' : 'Verify'}
+        </button>
+      </div>
+
+      <p className={`mt-2 text-xs font-semibold ${providerPhoneVerified ? 'text-green-700' : 'text-slate-500'}`}>
+        {providerPhoneVerified
+          ? (lang === 'zh' ? '✓ 服务商电话已验证' : '✓ Business phone verified')
+          : (providerOtpMessage || (lang === 'zh' ? '我们只用验证码确认这是你的服务商联系电话。' : 'We use the code only to confirm this business phone number.'))}
+      </p>
+    </div>
     <ManualCaptchaBox lang={lang} captcha={manualCaptcha} />
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}<button onClick={submit} disabled={submitting || !providerPhoneVerified} className="mt-6 rounded-full bg-red-700 px-6 py-3 text-sm font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (providerPhoneVerified ? (lang === 'zh' ? '加入免费 Beta 名单' : 'Join Free Beta List') : (lang === 'zh' ? '请先验证手机' : 'Verify phone first'))}</button></div>
     <div className="space-y-5"><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '服务商规则' : 'Provider rules'}</h3><div className="mt-5 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? '先确认电话：客户需求在分享前会先确认手机号。' : 'Phone confirmation: customer phone is confirmed before dispatch.'}</p><p>✔ {lang === 'zh' ? 'Beta 免费：测试阶段免费接收客户电话。' : 'Free beta: receive customer contact free during testing.'}</p><p>✔ {lang === 'zh' ? '无 App、无月费、无登录后台。' : 'No app, no monthly fee, no dashboard login.'}</p><p>✔ {lang === 'zh' ? '未来如启用付费，查看联系方式前会清楚显示规则。' : 'If paid access is enabled later, terms are shown before contact release.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来付费原则' : 'Future paid access principles'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-700"><p><b>{lang === 'zh' ? 'Beta 期间免费：' : 'Free during beta:'}</b> {lang === 'zh' ? '当前阶段先验证客户需求和服务商响应。' : 'This stage is for testing customer demand and provider response.'}</p><p><b>{lang === 'zh' ? '以后按需付费：' : 'Pay only if you choose:'}</b> {lang === 'zh' ? '如果未来开启付费，只有当你选择查看客户联系方式时才可能付费，无月费、无隐藏订阅。' : 'If paid access is enabled later, you may pay only when you choose to view a customer contact. No monthly fee or hidden subscription.'}</p><p><b>{lang === 'zh' ? '查看前明示：' : 'Shown before access:'}</b> {lang === 'zh' ? '共享/独家、已售人数、价格和退款/credit 规则会在查看联系方式前显示。' : 'Shared/exclusive status, sold count, price, and refund/credit rules will be shown before contact access.'}</p></div></div><div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-black/5"><h3 className="text-xl font-semibold">{lang === 'zh' ? '未来审核资料' : 'Future verification'}</h3><p className="mt-3 text-sm leading-6 text-slate-600">{lang === 'zh' ? '正式收费或 Verified 标识上线前，可补充商业保险、BN、Business ID、WCB 等文件。字段已在数据模型中保留。' : 'Before paid mode or verified badge, providers can add insurance, BN, Business ID, WCB, and other documents. Fields are already reserved in the data model.'}</p></div></div></div>
