@@ -1142,6 +1142,7 @@ function ManualCaptchaBox({ lang, captcha }: { lang: Lang; captcha: ManualCaptch
 function getRoute(): Route {
   const p = window.location.pathname
   if (p === '/provider') { window.history.replaceState({}, '', '/providers'); return { type: 'providerJoin' } }
+  if (p === '/' || p === '') return { type: 'home' }
   if (p === '/request') return { type: 'request' }
   if (p === '/providers' || p === '/providers/join') return { type: 'providerJoin' }
   if (p === '/provider/lead') return { type: 'providerLead' }
