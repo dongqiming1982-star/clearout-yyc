@@ -77,6 +77,105 @@ async function getSummary(res: any) {
     },
   })
 }
+async function getLaunchFunnel(res: any) {
+  const now = Date.now()
+
+  const [
+    verificationSessions,
+    leads,
+    leadPhotos,
+    notifications,
+    providers,
+  ]: any[] = await Promise.all([
+    supabaseAdminFetch('verification_sessions?select=*&order=created_at.desc&limit=5000'),
+    supabaseAdminFetch('leads?select=id,created_at&order=created_at.desc&limit=5000'),
+    supabaseAdminFetch('lead_photos?select=id,lead_id,created_at&order=created_at.desc&limit=5000'),
+    supabaseAdminFetch('provider_notifications?select=id,lead_id,channel,status,sent_at,error_message,created_at&order=created_at.desc&limit=5000'),
+    supabaseAdminFetch('providers?select=id,approved,active,notify_by_email,email_unsubscribed_at,notify_by_sms,sms_opt_out_at,created_at&order=created_at.desc&limit=5000'),
+  ])
+
+  const getTime = (row: any) => {
+    const raw = row?.created_at || row?.createdAt || row?.sent_at || row?.verified_at
+    const value = Date.parse(String(raw || ''))
+    return Number.isFinite(value) ? value : 0
+  }
+
+  const statusOf = (row: any) => String(row?.status || '').toLowerCase()
+  const channelOf = (row: any) => String(row?.channel || '').toLowerCase()
+  const typeOf = (row: any) => String(row?.verification_type || row?.purpose || row?.type || '').toLowerCase()
+
+  const isVerifiedSession = (row: any) => {
+    const status = statusOf(row)
+    return status === 'verified' || status === 'success' || status === 'approved' || Boolean(row?.verified_at)
+  }
+
+  const inLastHours = (row: any, hours: number) => {
+    return getTime(row) >= now - hours * 60 * 60 * 1000
+  }
+
+  const windowStats = (hours: number) => {
+    const windowSessions = verificationSessions.filter((row: any) => inLastHours(row, hours))
+    const windowLeads = leads.filter((row: any) => inLastHours(row, hours))
+    const windowLeadIds = new Set(windowLeads.map((lead: any) => String(lead.id)).filter(Boolean))
+
+    const photosForWindowLeads = leadPhotos.filter((photo: any) => windowLeadIds.has(String(photo.lead_id)))
+    const leadIdsWithPhotos = new Set(photosForWindowLeads.map((photo: any) => String(photo.lead_id)).filter(Boolean))
+
+    const windowNotifications = notifications.filter((row: any) => inLastHours(row, hours))
+
+    return {
+      phone_verifications: windowSessions.length,
+      verified_phones: windowSessions.filter(isVerifiedSession).length,
+      customer_phone_verifications: windowSessions.filter((row: any) => typeOf(row).includes('customer')).length,
+      provider_phone_verifications: windowSessions.filter((row: any) => typeOf(row).includes('provider')).length,
+
+      customer_leads: windowLeads.length,
+      leads_with_photos: leadIdsWithPhotos.size,
+      leads_without_photos: Math.max(windowLeads.length - leadIdsWithPhotos.size, 0),
+      lead_photos: photosForWindowLeads.length,
+
+      dispatch_notifications: windowNotifications.length,
+      dispatch_pending: windowNotifications.filter((row: any) => statusOf(row) === 'pending').length,
+      dispatch_sent: windowNotifications.filter((row: any) => statusOf(row) === 'sent').length,
+      dispatch_failed: windowNotifications.filter((row: any) => ['failed', 'error'].includes(statusOf(row))).length,
+      email_sent: windowNotifications.filter((row: any) => channelOf(row) === 'email' && statusOf(row) === 'sent').length,
+      sms_sent: windowNotifications.filter((row: any) => channelOf(row) === 'sms' && statusOf(row) === 'sent').length,
+    }
+  }
+
+  const providerSupply = {
+    providers_total: providers.length,
+    providers_pending: providers.filter((p: any) => p.approved !== true).length,
+    providers_approved_active: providers.filter((p: any) => p.approved === true && p.active !== false).length,
+    providers_inactive: providers.filter((p: any) => p.approved === true && p.active === false).length,
+    providers_email_subscribed: providers.filter((p: any) =>
+      p.approved === true &&
+      p.active !== false &&
+      p.notify_by_email !== false &&
+      !p.email_unsubscribed_at
+    ).length,
+    providers_sms_enabled: providers.filter((p: any) =>
+      p.approved === true &&
+      p.active !== false &&
+      p.notify_by_sms === true &&
+      !p.sms_opt_out_at
+    ).length,
+  }
+
+  return res.status(200).json({
+    ok: true,
+    funnel: {
+      generated_at: new Date(now).toISOString(),
+      windows: {
+        last_24h: windowStats(24),
+        last_7d: windowStats(24 * 7),
+        last_30d: windowStats(24 * 30),
+      },
+      provider_supply: providerSupply,
+    },
+  })
+}
+
 async function getProviders(res: any) {
   const providers = await supabaseAdminFetch(
     'providers?select=id,public_id,business_name,contact_name,business_description,email,phone,service_areas,service_types,vehicle_capabilities,daily_claim_limit,approved,active,notify_by_email,email_unsubscribed_at,email_unsubscribe_reason,email_resubscribed_at,email_resubscribe_source,email_preference_link_requested_at,application_email_sent_at,approval_email_sent_at,notify_by_sms,sms_opt_in_at,sms_opt_out_at,created_at,updated_at&order=created_at.desc&limit=200'
@@ -445,6 +544,7 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'GET') {
       if (resource === 'summary') return getSummary(res)
+      if (resource === 'launch-funnel') return getLaunchFunnel(res)
       if (resource === 'providers') return getProviders(res)
       if (resource === 'leads') return getLeads(res)
       if (resource === 'claims') return getClaims(res)

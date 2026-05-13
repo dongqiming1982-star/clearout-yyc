@@ -8,6 +8,7 @@ const TOKEN_KEY = 'clearout_admin_token_v30'
 
 const RESOURCES: AdminResource[] = [
   'summary',
+  'launch-funnel',
   'providers',
   'leads',
   'claims',
@@ -31,6 +32,29 @@ const TEXT = {
     claims: 'Claims',
     summary: 'Summary',
     dispatchOverview: 'Dispatch Queue Overview',
+    launchFunnel: 'Launch Funnel',
+    launchFunnelDesc: 'Read-only operating numbers from the database. Use this with Vercel Analytics to understand where the launch funnel is blocked.',
+    last24h: 'Last 24h',
+    last7d: 'Last 7d',
+    last30d: 'Last 30d',
+    readOnlyStats: 'Read-only stats',
+    phoneVerifications: 'Phone verifications',
+    verifiedPhones: 'Verified phones',
+    customerPhoneVerifications: 'Customer phone verifications',
+    providerPhoneVerifications: 'Provider phone verifications',
+    customerLeads: 'Customer leads',
+    leadsWithPhotos: 'Leads with photos',
+    leadsWithoutPhotos: 'Leads without photos',
+    leadPhotos: 'Lead photos',
+    dispatchNotifications: 'Dispatch notifications',
+    dispatchPending: 'Dispatch pending',
+    dispatchSent: 'Dispatch sent',
+    dispatchFailed: 'Dispatch failed',
+    providerSupply: 'Provider supply',
+    approvedActiveProviders: 'Approved active providers',
+    inactiveProviders: 'Inactive / suspended providers',
+    emailSubscribedProviders: 'Email-subscribed providers',
+    smsEnabledProviders: 'SMS-enabled providers',
     customerRequests: 'Customer submissions',
     customerRequestsDesc: 'When paused, customers cannot submit new clearout requests.',
     leadDispatch: 'Lead dispatch',
@@ -131,6 +155,29 @@ const TEXT = {
     claims: '认领记录',
     summary: '统计总览',
     dispatchOverview: '派单队列总览',
+    launchFunnel: '上线漏斗',
+    launchFunnelDesc: '只读运营数字，来自数据库。结合 Vercel Analytics 可以判断上线漏斗卡在哪里。',
+    last24h: '过去 24 小时',
+    last7d: '过去 7 天',
+    last30d: '过去 30 天',
+    readOnlyStats: '只读统计',
+    phoneVerifications: '电话验证记录',
+    verifiedPhones: '已验证电话',
+    customerPhoneVerifications: '客户电话验证',
+    providerPhoneVerifications: '服务商电话验证',
+    customerLeads: '客户需求',
+    leadsWithPhotos: '有照片需求',
+    leadsWithoutPhotos: '无照片需求',
+    leadPhotos: '需求照片',
+    dispatchNotifications: '派单通知',
+    dispatchPending: '待发送派单',
+    dispatchSent: '已发送派单',
+    dispatchFailed: '派单失败',
+    providerSupply: '服务商供给',
+    approvedActiveProviders: '已批准活跃服务商',
+    inactiveProviders: '停用 / 暂停服务商',
+    emailSubscribedProviders: '邮件订阅服务商',
+    smsEnabledProviders: '短信启用服务商',
     customerRequests: '客户提交',
     customerRequestsDesc: '关闭后，客户不能提交新的清运需求。',
     leadDispatch: '系统派单',
@@ -603,6 +650,14 @@ export default function AdminApp() {
   const summary = pickObject(data.summary, 'summary')
   const settings = pickObject(data.settings, 'settings')
   const overview = pickObject(data['dispatch-overview'], 'overview')
+  const launchFunnel = pickObject(data['launch-funnel'], 'funnel')
+  const launchWindows = (launchFunnel.windows || {}) as Record<string, any>
+  const launchFunnelRows = [
+    { key: 'last_24h', label: t.last24h, data: launchWindows.last_24h || {} },
+    { key: 'last_7d', label: t.last7d, data: launchWindows.last_7d || {} },
+    { key: 'last_30d', label: t.last30d, data: launchWindows.last_30d || {} },
+  ]
+  const providerSupply = (launchFunnel.provider_supply || {}) as Record<string, any>
   const providers = pickArray(data.providers, 'providers')
   const leads = pickArray(data.leads, 'leads')
   const claims = pickArray(data.claims, 'claims')
@@ -805,6 +860,8 @@ export default function AdminApp() {
             </div>
           ) : null}
 
+
+
           <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
             <h2 className="text-2xl font-black text-slate-950">
               {lang === 'zh' ? '后台登录' : 'Admin Login'}
@@ -873,6 +930,65 @@ export default function AdminApp() {
       </header>
 
       <main className="mx-auto max-w-[1500px] space-y-5 px-5 py-7">
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.25em] text-rose-700">{t.launchFunnel}</p>
+                <h3 className="mt-1 text-2xl font-black">{t.launchFunnel}</h3>
+                <p className="mt-2 max-w-3xl text-sm font-medium text-slate-600">{t.launchFunnelDesc}</p>
+              </div>
+              <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-700">
+                {t.readOnlyStats}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              {launchFunnelRows.map((row) => (
+                <div key={row.key} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{row.label}</h4>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {[
+                      [t.phoneVerifications, row.data.phone_verifications],
+                      [t.verifiedPhones, row.data.verified_phones],
+                      [t.customerLeads, row.data.customer_leads],
+                      [t.leadsWithPhotos, row.data.leads_with_photos],
+                      [t.leadPhotos, row.data.lead_photos],
+                      [t.dispatchNotifications, row.data.dispatch_notifications],
+                      [t.dispatchSent, row.data.dispatch_sent],
+                      [t.dispatchFailed, row.data.dispatch_failed],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="rounded-2xl bg-white p-3 shadow-sm">
+                        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">{String(label)}</p>
+                        <p className="mt-1 text-2xl font-black text-slate-950">{Number(value || 0)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4">
+              <h4 className="text-sm font-black uppercase tracking-[0.18em] text-slate-500">{t.providerSupply}</h4>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                {[
+                  [t.providersTotal, providerSupply.providers_total],
+                  [t.providersPending, providerSupply.providers_pending],
+                  [t.approvedActiveProviders, providerSupply.providers_approved_active],
+                  [t.inactiveProviders, providerSupply.providers_inactive],
+                  [t.emailSubscribedProviders, providerSupply.providers_email_subscribed],
+                  [t.smsEnabledProviders, providerSupply.providers_sms_enabled],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="rounded-2xl bg-slate-50 p-3">
+                    <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">{String(label)}</p>
+                    <p className="mt-1 text-2xl font-black text-slate-950">{Number(value || 0)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+
         {error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-bold text-red-800">
             {error}
@@ -1280,6 +1396,7 @@ export default function AdminApp() {
 
         {activeTab === 'raw' ? (
           <div className="grid gap-5 lg:grid-cols-2">
+            <JsonPanel title="Launch Funnel" data={data['launch-funnel'] || {}} />
             <JsonPanel title="Summary" data={data.summary || {}} />
             <JsonPanel title="Settings" data={data.settings || {}} />
             <JsonPanel title="Dispatch Overview" data={data['dispatch-overview'] || {}} />

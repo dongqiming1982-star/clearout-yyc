@@ -1,5 +1,6 @@
 export type AdminResource =
   | 'summary'
+  | 'launch-funnel'
   | 'providers'
   | 'leads'
   | 'claims'
