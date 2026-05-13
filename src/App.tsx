@@ -2446,48 +2446,11 @@ function RequestForm({ lang }: { lang: Lang }) {
       <div className="mt-4 grid gap-3 sm:grid-cols-2">{requestCategories.map(o => <ChoiceCard key={o.id} selected={categories.includes(o.id)} onClick={() => setCategories(toggleValue(categories, o.id))} title={`${o.icon} ${o[lang]}`} />)}</div>
       {!categories.length && <p className="mt-3 text-xs font-semibold text-red-700">{lang === 'zh' ? '请至少选择一种清运类型，这会用于匹配合适的服务商。' : 'Please select at least one removal type. This helps match the right providers.'}</p>}
 
-      <div className="hidden" aria-hidden="true">
-        <StepTitle n="2" title={lang === 'zh' ? '大概多少？' : 'How much is there?'} className="mt-8" />
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">{amountOptions.map(o => <ChoiceCard key={o.id} selected={amount === o.id} onClick={() => setAmount(o.id as Lead['rough_amount'])} title={o[lang]} />)}</div>
-
-        <StepTitle n="3" title={lang === 'zh' ? '东西在哪里？' : 'Where is it?'} className="mt-8" />
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">{locationOptions.map(o => <ChoiceCard key={o.id} selected={location === o.id} onClick={() => setLocation(o.id as Lead['item_location'])} title={o[lang]} />)}</div>
-
-        <StepTitle n="4" title={lang === 'zh' ? '特殊物品' : 'Special items'} className="mt-8" />
-        <p className="mt-2 text-sm leading-6 text-slate-600">{lang === 'zh' ? '这些会影响是否自动分发。危险物品不会作为普通清运单发送。' : 'These affect dispatch eligibility. Hazardous items are not sent as regular junk removal leads.'}</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">{regularSpecialItems.map(o => <ChoiceCard key={o.id} selected={regular.includes(o.id)} onClick={() => setRegular(toggleValue(regular, o.id))} title={o[lang]} />)}</div>
-        <div className="mt-5 rounded-[1.5rem] bg-red-50 p-4 ring-1 ring-red-100"><b className="text-red-950">{lang === 'zh' ? '危险/受限物品' : 'Hazardous / restricted items'}</b><div className="mt-3 grid gap-2 sm:grid-cols-2">{blockedItems.map(o => <ChoiceCard key={o.id} danger selected={blocked.includes(o.id)} onClick={() => setBlocked(toggleValue(blocked, o.id))} title={o[lang]} />)}</div>{blocked.length > 0 && <p className="mt-4 text-sm leading-6 text-red-900"><AlertTriangle className="mr-2 inline" size={16}/>{lang === 'zh' ? '这些物品可能需要 City of Calgary 特殊处理，不会作为普通清运单自动分发。' : 'These items may require City of Calgary special disposal and will not be auto-dispatched as a regular junk lead.'}</p>}</div>
-      </div>
-
-      <StepTitle n="2" title={lang === 'zh' ? '需求详情和联系方式' : 'Request details and contact'} className="mt-8" />
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/>
-        <Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/>
-        <Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>
-        {communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          <b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>
-          {areaName(contact.area, lang)}
-          <p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；派单按 Calgary 大区匹配，不做社区硬匹配。' : 'Community pages pre-fill this field. Dispatch matches by Calgary area, not hard community boundaries.'}</p>
-        </div>
-        <Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/>
-      </div>
-      <label className="mt-5 block">
-        <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span>
-        <textarea
-          value={contact.description}
-          maxLength={CUSTOMER_DESCRIPTION_MAX}
-          onChange={e => setContact({ ...contact, description: e.target.value })}
-          placeholder={lang === 'zh' ? '例如：车库里有沙发和床垫，容易搬，希望周末清走。' : 'Example: Sofa and mattress in garage, easy access, prefer this weekend.'}
-          className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
-        />
-        <span className="mt-1 block text-right text-xs font-semibold text-slate-400">{contact.description.length}/{CUSTOMER_DESCRIPTION_MAX}</span>
-      </label>
       <label className="mt-5 flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-dashed border-black/20 bg-slate-50 p-5 text-sm font-semibold text-slate-700 hover:bg-slate-100">
         <Camera size={18}/>
         {photoBusy
           ? (lang === 'zh' ? '正在压缩照片…' : 'Compressing photos…')
-          : (lang === 'zh' ? `添加照片（可选，已选 ${leadPhotos.length}/2）` : `Add photos (optional, ${leadPhotos.length}/2 selected)`)}
+          : (lang === 'zh' ? `上传照片（必填，已选 ${leadPhotos.length}/2）` : `Upload photos (required, ${leadPhotos.length}/2 selected)`)}
         <input
           type="file"
           multiple
@@ -2501,8 +2464,8 @@ function RequestForm({ lang }: { lang: Lang }) {
       </label>
       <p className="mt-2 text-xs leading-5 text-slate-500">
         {lang === 'zh'
-          ? '可分次添加，最多 2 张；每张原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。'
-          : 'You can add photos one at a time, up to 2 total. Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}
+          ? '请至少上传 1 张，最多 2 张；每张原图最大 5MB；浏览器会先压缩，云端只保存压缩图，默认 30 天后删除。'
+          : 'Please upload at least 1 photo, up to 2 total. Original image max 5MB; your browser compresses it first. Only compressed photos are stored and removed after 30 days by default.'}
       </p>
       {photoError && <p className="mt-2 text-xs font-semibold text-red-700">{photoError}</p>}
       {leadPhotos.length > 0 && (
@@ -2524,6 +2487,44 @@ function RequestForm({ lang }: { lang: Lang }) {
           ))}
         </div>
       )}
+      <label className="mt-5 block">
+        <span className="mb-2 block text-sm font-semibold">{lang === 'zh' ? '需求描述' : 'Description'}</span>
+        <textarea
+          value={contact.description}
+          maxLength={CUSTOMER_DESCRIPTION_MAX}
+          onChange={e => setContact({ ...contact, description: e.target.value })}
+          placeholder={lang === 'zh' ? '例如：车库里有沙发和床垫，容易搬，希望周末清走。' : 'Example: Sofa and mattress in garage, easy access, prefer this weekend.'}
+          className="min-h-[120px] w-full rounded-2xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-red-700 focus:ring-4 focus:ring-red-700/10"
+        />
+        <span className="mt-1 block text-right text-xs font-semibold text-slate-400">{contact.description.length}/{CUSTOMER_DESCRIPTION_MAX}</span>
+      </label>
+
+      <div className="hidden" aria-hidden="true">
+        <StepTitle n="2" title={lang === 'zh' ? '大概多少？' : 'How much is there?'} className="mt-8" />
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">{amountOptions.map(o => <ChoiceCard key={o.id} selected={amount === o.id} onClick={() => setAmount(o.id as Lead['rough_amount'])} title={o[lang]} />)}</div>
+
+        <StepTitle n="3" title={lang === 'zh' ? '东西在哪里？' : 'Where is it?'} className="mt-8" />
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">{locationOptions.map(o => <ChoiceCard key={o.id} selected={location === o.id} onClick={() => setLocation(o.id as Lead['item_location'])} title={o[lang]} />)}</div>
+
+        <StepTitle n="4" title={lang === 'zh' ? '特殊物品' : 'Special items'} className="mt-8" />
+        <p className="mt-2 text-sm leading-6 text-slate-600">{lang === 'zh' ? '这些会影响是否自动分发。危险物品不会作为普通清运单发送。' : 'These affect dispatch eligibility. Hazardous items are not sent as regular junk removal leads.'}</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">{regularSpecialItems.map(o => <ChoiceCard key={o.id} selected={regular.includes(o.id)} onClick={() => setRegular(toggleValue(regular, o.id))} title={o[lang]} />)}</div>
+        <div className="mt-5 rounded-[1.5rem] bg-red-50 p-4 ring-1 ring-red-100"><b className="text-red-950">{lang === 'zh' ? '危险/受限物品' : 'Hazardous / restricted items'}</b><div className="mt-3 grid gap-2 sm:grid-cols-2">{blockedItems.map(o => <ChoiceCard key={o.id} danger selected={blocked.includes(o.id)} onClick={() => setBlocked(toggleValue(blocked, o.id))} title={o[lang]} />)}</div>{blocked.length > 0 && <p className="mt-4 text-sm leading-6 text-red-900"><AlertTriangle className="mr-2 inline" size={16}/>{lang === 'zh' ? '这些物品可能需要 City of Calgary 特殊处理，不会作为普通清运单自动分发。' : 'These items may require City of Calgary special disposal and will not be auto-dispatched as a regular junk lead.'}</p>}</div>
+      </div>
+
+      <StepTitle n="2" title={lang === 'zh' ? '联系方式和验证' : 'Contact and verification'} className="mt-8" />
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Input label={lang === 'zh' ? '姓名' : 'Name'} value={contact.name} setValue={v => setContact({ ...contact, name: v })}/>
+        <Input label="Email" value={contact.email} setValue={v => setContact({ ...contact, email: v })}/>
+        <Select label={lang === 'zh' ? '社区' : 'Community'} value={communitySlug} setValue={chooseCommunity} options={communitySelectOptions} lang={lang}/>
+        {communitySlug === 'other' && <Input label={lang === 'zh' ? '社区 / 邮编（如果不在列表）' : 'Community / postal code (if not listed)'} value={contact.community} setValue={v => setContact({ ...contact, community: v, area: normalizeDispatchArea('', v) })}/>}
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <b className="block text-slate-950">{lang === 'zh' ? '系统匹配区域' : 'Matching area'}</b>
+          {areaName(contact.area, lang)}
+          <p className="mt-1 text-xs">{lang === 'zh' ? '社区页进入时会自动带入社区；派单按 Calgary 大区匹配，不做社区硬匹配。' : 'Community pages pre-fill this field. Dispatch matches by Calgary area, not hard community boundaries.'}</p>
+        </div>
+        <Select label={lang === 'zh' ? '时间' : 'Timing'} value={timing} setValue={v => setTiming(v as Lead['timing'])} options={[{ id: 'today', en: 'Today', zh: '今天' }, { id: 'tomorrow', en: 'Tomorrow', zh: '明天' }, { id: 'this_week', en: 'This week', zh: '本周' }, { id: 'flexible', en: 'Flexible', zh: '时间灵活' }]} lang={lang}/>
+      </div>
       <div className="mt-5 rounded-[1.5rem] bg-slate-50 p-4 ring-1 ring-black/5">
         <div>
           <b className="text-base text-slate-950">{lang === 'zh' ? '电话短信验证' : 'Phone SMS verification'}</b>
@@ -2590,7 +2591,7 @@ function RequestForm({ lang }: { lang: Lang }) {
       </div>
       <div className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-700"><label className="flex gap-3"><input type="checkbox" checked={real} onChange={e => setReal(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我确认这是一个真实清运需求。' : 'I confirm this is a real junk removal request.'}</span></label><label className="flex gap-3"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-1"/><span>{lang === 'zh' ? '我同意验证我的电话号码，并允许 Clearout YYC 将我的需求和联系方式分享给最多 3 个本地清运服务商。' : 'I agree to verify my phone number and allow Clearout YYC to share my request and contact details with up to 3 local junk removal providers.'}</span></label></div>
       {error && <div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-semibold text-red-900">{error}</div>}
-      <button onClick={submit} disabled={submitting || !phoneVerified || !categories.length} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-base font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (!categories.length ? (lang === 'zh' ? '请先选择清运类型' : 'Select removal type first') : (phoneVerified ? (lang === 'zh' ? '提交免费需求' : 'Submit Free Request') : (lang === 'zh' ? '请先验证手机' : 'Verify phone first')))}<ArrowRight size={18}/></button>
+      <button onClick={submit} disabled={submitting || !phoneVerified || !categories.length || leadPhotos.length < 1} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-700 px-6 py-4 text-base font-semibold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{submitting ? (lang === 'zh' ? '提交中…' : 'Submitting…') : (!categories.length ? (lang === 'zh' ? '请先选择清运类型' : 'Select removal type first') : (leadPhotos.length < 1 ? (lang === 'zh' ? '请至少上传一张照片' : 'Upload at least one photo') : (phoneVerified ? (lang === 'zh' ? '提交免费需求' : 'Submit Free Request') : (lang === 'zh' ? '请先验证手机' : 'Verify phone first'))))}<ArrowRight size={18}/></button>
     </div>
     <div className="space-y-5"><div className="hidden" aria-hidden="true"><LeadGradeCard lang={lang} grade={classification.grade} fee={classification.fee} eligible={classification.eligible} risks={classification.riskFlags} /></div><div className="rounded-[2rem] bg-slate-950 p-6 text-white"><h3 className="text-2xl font-semibold">{lang === 'zh' ? '提交前请了解' : 'Before you submit'}</h3><div className="mt-4 grid gap-3 text-sm leading-6 text-slate-300"><p>✔ {lang === 'zh' ? 'Clearout YYC 是清运需求分发平台，不是清运公司。' : 'Clearout YYC is a junk removal request platform, not a junk removal company.'}</p><p>✔ {lang === 'zh' ? '你的需求最多发送给 3 个本地清运服务商。' : 'Your request may be shared with up to 3 local junk removal providers.'}</p><p>✔ {lang === 'zh' ? '你提交需求是免费的。' : 'Submitting a request is free.'}</p><p>✔ {lang === 'zh' ? '最终价格、时间、付款和服务由你和服务商直接确认。' : 'Final price, timing, payment, and service details are confirmed directly with the provider.'}</p></div></div></div>
   </div>

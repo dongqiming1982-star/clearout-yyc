@@ -53,6 +53,14 @@ export default async function handler(req: any, res: any) {
     const { lead, turnstileToken, source_url, manualCaptcha, leadPhotos } = req.body || {}
     if (!lead || typeof lead !== 'object') return res.status(400).json({ error: 'Missing lead payload' })
 
+    if (!Array.isArray(leadPhotos) || leadPhotos.length < 1) {
+      return res.status(400).json({ error: 'Please upload at least one photo before submitting.' })
+    }
+
+    if (leadPhotos.length > 2) {
+      return res.status(400).json({ error: 'You can upload up to 2 photos.' })
+    }
+
     const platformSettings = await getPlatformSettings()
     if (!platformSettings.customer_requests_enabled) {
       return res.status(503).json({
@@ -138,7 +146,7 @@ export default async function handler(req: any, res: any) {
       }
 
       if (created?.accepted && created?.lead_public_id) {
-        const photoPayload = Array.isArray(leadPhotos) ? leadPhotos.slice(0, 2) : []
+        const photoPayload = leadPhotos.slice(0, 2)
         if (photoPayload.length) {
           const leadRows = await supabaseSelect<any>(`leads?select=id,public_id&public_id=eq.${encodeURIComponent(created.lead_public_id)}&limit=1`)
           const savedLead = leadRows[0]
